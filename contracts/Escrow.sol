@@ -20,6 +20,11 @@ contract Escrow { // Declares the Escrow contract which handles the escrow logic
         _; // Placeholder for the modified function's body.
     }
 
+    modifier onlyInspector() { // Modifier to restrict function access to only the inspector.
+        require(msg.sender == inspector, "Only inspector can call this function"); // Checks if the caller is the inspector, reverts with a message if not.
+        _; // Placeholder for the modified function's body.
+    }
+
     bool public inspectionPassed = false;
 
     constructor( // Constructor function to initialize the Escrow contract with all necessary parameters.
@@ -50,7 +55,7 @@ contract Escrow { // Declares the Escrow contract which handles the escrow logic
         require(msg.value == escrowAmount); // Ensures the deposited value matches the required escrow amount, reverts if not.
     }
 
-    function updateInspectionStatus(bool _passed) public{
+    function updateInspectionStatus(bool _passed) public onlyInspector{
         inspectionPassed = _passed; // Public function to update the inspection status, setting it to true or false based on the input.
     }
 

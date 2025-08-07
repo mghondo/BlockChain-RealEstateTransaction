@@ -77,6 +77,11 @@ describe('RealEstate', () => { // Starts a Mocha test suite for the RealEstate c
             // Seller approves the escrow contract to transfer the NFT
             await realEstate.connect(seller).approve(escrow.address, nftID); // Approves the Escrow contract to transfer the NFT on behalf of the seller.
 
+            //Inspector updates inspection status
+            transaction = await escrow.connect(inspector).updateInspectionStatus(true); // Simulates the inspector updating the inspection status to true (passed).
+            await transaction.wait(); // Waits for the updateInspectionStatus transaction to be mined.
+            console.log("Inspector updates inspection status"); // Logs a message indicating the inspector has done whatever
+
             // Buyer finalizes the sale
             transaction = await escrow.connect(buyer).finalizeSale(); // Simulates the buyer calling finalizeSale to complete the transaction.
             await transaction.wait(); // Waits for the finalizeSale transaction to be mined.
