@@ -2,19 +2,21 @@
 const { expect } = require('chai'); // Imports the 'expect' function from Chai for assertions in tests.
 const { ethers } = require('hardhat'); // Imports the ethers library from Hardhat for interacting with Ethereum contracts.
 
-const tokens = (n) => { // Defines a helper function 'tokens' to convert a number to wei units using ethers.utils.parseUnits.
+// Helper function to convert a number to wei units (in ether) for easier testing
+const tokens = (n) => {
     return ethers.utils.parseUnits(n.toString(), 'ether'); // Converts the input number to a string and parses it into ether units.
 };
 
-describe('RealEstate', () => { // Starts a Mocha test suite for the RealEstate contract and related functionality.
+describe('RealEstate', () => { // Starts a Mocha test suite for the RealEstate and Escrow contracts.
     let realEstate, escrow; // Declares variables to hold instances of the RealEstate and Escrow contracts.
-    let deployer, seller, buyer, inspector, lender; // Declares variables for different accounts: deployer (who is also the seller), buyer, inspector, and lender.
-    let nftID = 1; // Sets the NFT ID to 1, which will be used for the real estate token.
-    let purchasePrice = tokens(100); // Sets the purchase price to 100 ether using the tokens helper function.
-    let escrowAmount = tokens(20); // Sets the escrow amount (earnest money) to 20 ether using the tokens helper function.
+    let deployer, seller, buyer, inspector, lender; // Declares variables for different accounts: deployer (also seller), buyer, inspector, and lender.
+    let nftID = 1; // Sets the NFT ID to 1, representing the real estate token.
+    let purchasePrice = tokens(100); // Sets the purchase price to 100 ether for the property.
+    let escrowAmount = tokens(20); // Sets the earnest money deposit to 20 ether.
 
-    beforeEach(async () => { // Defines a beforeEach hook that runs before each test to set up the environment.
-        const accounts = await ethers.getSigners(); // Retrieves the list of signers (accounts) from ethers.
+    beforeEach(async () => { // Runs before each test to set up the environment.
+        // Setup accounts
+        const accounts = await ethers.getSigners(); // Retrieves the list of signers (accounts) from Hardhat.
         deployer = accounts[0]; // Assigns the first account as the deployer.
         seller = deployer; // Sets the seller to be the same as the deployer.
         buyer = accounts[1]; // Assigns the second account as the buyer.
@@ -24,71 +26,160 @@ describe('RealEstate', () => { // Starts a Mocha test suite for the RealEstate c
         // Load contracts
         const RealEstate = await ethers.getContractFactory('RealEstate'); // Loads the RealEstate contract factory.
         const Escrow = await ethers.getContractFactory('Escrow'); // Loads the Escrow contract factory.
+
         // Deploy contracts
         realEstate = await RealEstate.deploy(); // Deploys the RealEstate contract.
         escrow = await Escrow.deploy( // Deploys the Escrow contract with specified parameters.
-            realEstate.address, // Passes the address of the RealEstate contract.
-            nftID, // Passes the NFT ID.
-            purchasePrice, // Passes the purchase price.
-            escrowAmount, // Passes the escrow amount.
-            seller.address, // Passes the seller's address.
-            buyer.address, // Passes the buyer's address.
-            inspector.address, // Passes the inspector's address.
-            lender.address // Passes the lender's address.
+            realEstate.address, // Address of the RealEstate contract.
+            nftID, // NFT ID for the property.
+            purchasePrice, // Full purchase price (100 ETH).
+            escrowAmount, // Earnest money amount (20 ETH).
+            seller.address, // Seller's address.
+            buyer.address, // Buyer's address.
+            inspector.address, // Inspector's address.
+            lender.address // Lender's address.
         );
 
         await realEstate.deployed(); // Waits for the RealEstate contract to be deployed.
         await escrow.deployed(); // Waits for the Escrow contract to be deployed.
 
         // Mint an NFT to the seller
-        await realEstate.mint("https://ipfs.io/ipfs/QmTudSYeM7mz3PkYEWXWqPjomRPHogcMFSq7XAvsvsgAPS"); // Mints an NFT with a specific URI to the seller (deployer).
+        await realEstate.mint("https://ipfs.io/ipfs/QmTudSYeM7mz3PkYEWXWqPjomRPHogcMFSq7XAvsvsgAPS"); // Mints an NFT with a specific URI to the seller.
+
+        // Seller approves the escrow contract to transfer the NFT
+        let transaction = await realEstate.connect(seller).approve(escrow.address, nftID); // Approves the Escrow contract to transfer the NFT on behalf of the seller.
+        await transaction.wait(); // Waits for the approval transaction to be mined.
     });
 
-    describe('Deployment', () => { // Starts a nested test suite for deployment-related tests.
-        it('deploys RealEstate contract successfully', async () => { // Tests if the RealEstate contract deploys with a valid address.
-            expect(realEstate.address).to.be.properAddress; // Asserts that the RealEstate contract has a proper Ethereum address.
+    describe('Deployment', () => { // Tests deployment-related functionality.
+        it('deploys RealEstate contract successfully', async () => { // Verifies that the RealEstate contract deploys with a valid address.
+            expect(realEstate.address).to.be.properAddress; // Asserts the RealEstate contract has a proper Ethereum address.
         });
 
-        it('deploys Escrow contract successfully', async () => { // Tests if the Escrow contract deploys with a valid address.
-            expect(escrow.address).to.be.properAddress; // Asserts that the Escrow contract has a proper Ethereum address.
+        it('deploys Escrow contract successfully', async () => { // Verifies that the Escrow contract deploys with a valid address.
+            expect(escrow.address).to.be.properAddress; // Asserts the Escrow contract has a proper Ethereum address.
         });
 
-        it('sends an NFT to the seller/deployer', async () => { // Tests if the minted NFT is owned by the seller.
-            expect(await realEstate.ownerOf(nftID)).to.equal(seller.address); // Asserts that the owner of the NFT with nftID is the seller's address.
+        it('sends an NFT to the seller/deployer', async () => { // Verifies that the minted NFT is owned by the seller.
+            expect(await realEstate.ownerOf(nftID)).to.equal(seller.address); // Asserts the seller owns the NFT with the specified ID.
+        });
+
+        it('initializes Escrow contract in Created phase', async () => { // Verifies the Escrow contract starts in the Created phase (id 0).
+            expect((await escrow.currentPhase()).id).to.equal(0); // Asserts the phase ID is 0 (Created).
         });
     });
 
-    describe('Selling real estate', () => { // Starts a nested test suite for selling real estate functionality.
-        let balance, transaction; // Declares variables to hold balance and transaction objects.
+    describe('Selling real estate', () => { // Tests the real estate sale process.
+        let balance, transaction; // Declares variables for balance and transaction tracking.
 
-        it('executes a successful transaction', async () => { // Tests the entire process of a successful real estate sale transaction.
-            // Expect Seller to be the NFT owner before the sale
-            expect(await realEstate.ownerOf(nftID)).to.equal(seller.address); // Asserts that the seller owns the NFT before the sale.
+        it('executes a successful transaction', async () => { // Tests a complete, successful sale following the required sequence.
+            // Verify initial state
+            expect(await realEstate.ownerOf(nftID)).to.equal(seller.address); // Confirms the seller owns the NFT before the sale.
+            expect((await escrow.currentPhase()).id).to.equal(0); // Confirms the contract starts in Created phase.
 
+            // Step 1: Buyer deposits earnest money
+            transaction = await escrow.connect(buyer).depositEarnest({ value: escrowAmount }); // Buyer deposits 20 ETH as earnest money.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Buyer deposits earnest money");
+            expect((await escrow.currentPhase()).id).to.equal(1); // Verifies phase advances to EarnestDeposited (1).
+            balance = await escrow.getBalance(); // Checks the escrow contract balance.
+            expect(balance).to.equal(escrowAmount); // Asserts the balance is 20 ETH.
+            console.log("Escrow balance after earnest deposit:", ethers.utils.formatEther(balance));
+
+            // Step 2: Inspector updates inspection status
+            transaction = await escrow.connect(inspector).updateInspectionStatus(true); // Inspector sets inspectionPassed to true.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Inspector updates status");
+            expect(await escrow.inspectionPassed()).to.equal(true); // Verifies inspection passed.
+
+            // Step 3: Approvals by all parties
+            transaction = await escrow.connect(buyer).approveByRole("buyer"); // Buyer approves the sale.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Buyer approves sale");
+            expect(await escrow.approvals(buyer.address)).to.equal(true); // Verifies buyer approval.
+
+            transaction = await escrow.connect(seller).approveByRole("seller"); // Seller approves the sale.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Seller approves sale");
+            expect(await escrow.approvals(seller.address)).to.equal(true); // Verifies seller approval.
+
+            transaction = await escrow.connect(lender).approveByRole("lender"); // Lender approves the sale.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Lender approves sale");
+            expect(await escrow.approvals(lender.address)).to.equal(true); // Verifies lender approval.
+            expect((await escrow.currentPhase()).id).to.equal(2); // Verifies phase advances to Approved (2).
+
+            // Step 4: Lender deposits remaining funds
+            const remainingAmount = purchasePrice.sub(escrowAmount); // Calculates remaining amount (100 - 20 = 80 ETH).
+            transaction = await escrow.connect(lender).depositFullPrice({ value: remainingAmount }); // Lender deposits 80 ETH.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Lender deposits remaining full price");
+            balance = await escrow.getBalance(); // Checks the escrow contract balance.
+            expect(balance).to.equal(purchasePrice); // Asserts the balance is 100 ETH.
+            console.log("Escrow balance after full deposit:", ethers.utils.formatEther(balance));
+            expect((await escrow.currentPhase()).id).to.equal(3); // Verifies phase advances to FullyFunded (3).
+
+            // Step 5: Buyer finalizes the sale
+            const sellerInitialBalance = await ethers.provider.getBalance(seller.address); // Records seller's initial balance.
+            transaction = await escrow.connect(buyer).finalizeSale(); // Buyer finalizes the sale, transferring NFT and funds.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Buyer finalizes sale");
+
+            // Verify outcomes
+            expect(await realEstate.ownerOf(nftID)).to.equal(buyer.address); // Asserts the buyer now owns the NFT.
+            expect((await escrow.currentPhase()).id).to.equal(4); // Verifies phase advances to Completed (4).
+            balance = await ethers.provider.getBalance(seller.address); // Checks seller's final balance.
+            expect(balance).to.be.above(sellerInitialBalance); // Asserts seller received funds (exact amount depends on test account balance).
+            console.log("Seller balance after sale:", ethers.utils.formatEther(balance));
+            expect(await escrow.getBalance()).to.equal(0); // Asserts escrow balance is 0 after funds are transferred.
+        });
+
+        it('cancels transaction if inspection fails', async () => { // Tests cancellation when inspection fails, refunding buyer.
             // Buyer deposits earnest money
-            transaction = await escrow.connect(buyer).depositEarnest({ value: escrowAmount }); // Simulates the buyer depositing the escrow amount into the Escrow contract.
-            // transaction = await escrow.connect(buyer).depositEarnest({ value: tokens(20) }); // Commented out alternative way to deposit earnest money.
-            await transaction.wait(); // Waits for the deposit transaction to be mined.
+            transaction = await escrow.connect(buyer).depositEarnest({ value: escrowAmount }); // Buyer deposits 20 ETH.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            expect((await escrow.currentPhase()).id).to.equal(1); // Verifies phase advances to EarnestDeposited.
 
-            //check escrow balance
-            balance = await escrow.getBalance(); // Retrieves the current balance of the Escrow contract.
-            console.log("Escrow balance after deposit:", ethers.utils.formatEther(balance)); // Logs the escrow balance after deposit for debugging.
+            // Inspector sets inspection to failed
+            transaction = await escrow.connect(inspector).updateInspectionStatus(false); // Inspection fails.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            expect(await escrow.inspectionPassed()).to.equal(false); // Verifies inspection failed.
 
-            // Seller approves the escrow contract to transfer the NFT
-            await realEstate.connect(seller).approve(escrow.address, nftID); // Approves the Escrow contract to transfer the NFT on behalf of the seller.
+            // Buyer cancels the sale
+            const buyerInitialBalance = await ethers.provider.getBalance(buyer.address); // Records buyer's initial balance.
+            transaction = await escrow.connect(buyer).cancelSale(); // Buyer cancels, expecting refund.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Buyer cancels sale due to failed inspection");
 
-            //Inspector updates inspection status
-            transaction = await escrow.connect(inspector).updateInspectionStatus(true); // Simulates the inspector updating the inspection status to true (passed).
-            await transaction.wait(); // Waits for the updateInspectionStatus transaction to be mined.
-            console.log("Inspector updates inspection status"); // Logs a message indicating the inspector has done whatever
+            // Verify outcomes
+            expect((await escrow.currentPhase()).id).to.equal(5); // Verifies phase advances to Cancelled (5).
+            balance = await ethers.provider.getBalance(buyer.address); // Checks buyer's final balance.
+            expect(balance).to.be.above(buyerInitialBalance); // Asserts buyer received refund (accounting for gas).
+            expect(await escrow.getBalance()).to.equal(0); // Asserts escrow balance is 0 after refund.
+        });
 
-            // Buyer finalizes the sale
-            transaction = await escrow.connect(buyer).finalizeSale(); // Simulates the buyer calling finalizeSale to complete the transaction.
-            await transaction.wait(); // Waits for the finalizeSale transaction to be mined.
-            console.log("Buyer finalizes sale"); // Logs a message indicating the buyer has finalized the sale.
+        it('cancels transaction after inspection passes', async () => { // Tests cancellation after inspection passes, forfeiting to seller.
+            // Buyer deposits earnest money
+            transaction = await escrow.connect(buyer).depositEarnest({ value: escrowAmount }); // Buyer deposits 20 ETH.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            expect((await escrow.currentPhase()).id).to.equal(1); // Verifies phase advances to EarnestDeposited.
 
-            // Expect the buyer to be the new owner of the NFT
-            expect(await realEstate.ownerOf(nftID)).to.equal(buyer.address); // Asserts that the buyer now owns the NFT after the sale.
+            // Inspector sets inspection to passed
+            transaction = await escrow.connect(inspector).updateInspectionStatus(true); // Inspection passes.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            expect(await escrow.inspectionPassed()).to.equal(true); // Verifies inspection passed.
+
+            // Buyer cancels the sale
+            const sellerInitialBalance = await ethers.provider.getBalance(seller.address); // Records seller's initial balance.
+            transaction = await escrow.connect(buyer).cancelSale(); // Buyer cancels, expecting forfeiture to seller.
+            await transaction.wait(); // Waits for the transaction to be mined.
+            console.log("Buyer cancels sale after inspection passed");
+
+            // Verify outcomes
+            expect((await escrow.currentPhase()).id).to.equal(5); // Verifies phase advances to Cancelled (5).
+            balance = await ethers.provider.getBalance(seller.address); // Checks seller's final balance.
+            expect(balance).to.be.above(sellerInitialBalance); // Asserts seller received earnest money.
+            expect(await escrow.getBalance()).to.equal(0); // Asserts escrow balance is 0 after forfeiture.
         });
     });
 });

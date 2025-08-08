@@ -1,75 +1,213 @@
-// Escrow.sol - This contract manages the escrow process for real estate transactions using NFTs.
-pragma solidity ^0.8.0; // Specifies the Solidity compiler version to use, ensuring compatibility.
+// SPDX-License-Identifier: Unlicense
+pragma solidity ^0.8.0;
 
-interface IERC721 { // Defines an interface for ERC721 tokens to interact with NFT transfers.
-    function transferFrom(address _from, address _to, uint256 _id) external; // Declares the transferFrom function required for transferring NFTs.
+// Import OpenZeppelin's ReentrancyGuard for security against reentrancy attacks
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
+// Interface for ERC721 to handle NFT transfers
+interface IERC721 {
+    // Declares the transferFrom function for moving NFTs between addresses
+    function transferFrom(address _from, address _to, uint256 _id) external;
 }
 
-contract Escrow { // Declares the Escrow contract which handles the escrow logic.
-    address public nftAddress; // Public variable to store the address of the NFT contract.
-    uint256 public nftID; // Public variable to store the ID of the NFT being sold.
-    uint256 public purchasePrice; // Public variable to store the purchase price of the real estate.
-    uint256 public escrowAmount; // Public variable to store the escrow (earnest money) amount.
-    address payable public seller; // Public payable address for the seller.
-    address payable public buyer; // Public payable address for the buyer.
-    address public inspector; // Public address for the inspector.
-    address public lender; // Public address for the lender.
+// Escrow contract for managing real estate transactions with NFTs
+contract Escrow is ReentrancyGuard {
+    // State variables for contract configuration
+    address public immutable nftAddress; // Address of the NFT contract (immutable for gas savings)
+    uint256 public immutable nftID; // ID of the NFT representing the property
+    uint256 public immutable purchasePrice; // Total price of the property (e.g., 100 ETH)
+    uint256 public immutable escrowAmount; // Earnest money deposit required (e.g., 20 ETH)
+    address payable public immutable seller; // Seller's address for receiving funds
+    address payable public immutable buyer; // Buyer's address for purchasing the NFT
+    address public immutable inspector; // Inspector's address for updating inspection status
+    address public immutable lender; // Lender's address for funding the remaining amount
 
-    modifier onlyBuyer() { // Modifier to restrict function access to only the buyer.
-        require(msg.sender == buyer, "Only buyer can call this function"); // Checks if the caller is the buyer, reverts with a message if not.
-        _; // Placeholder for the modified function's body.
+    // Custom errors for gas-efficient reverts
+    error Unauthorized(string role); // Thrown when an unauthorized party calls a function
+    error InvalidPhase(uint8 requiredPhase, uint8 currentPhase); // Thrown for wrong transaction phase
+    error InsufficientDeposit(uint256 required, uint256 provided); // Thrown for insufficient funds
+    error InspectionNotPassed(); // Thrown if inspection hasn't passed
+    error NotAllApproved(); // Thrown if approvals are incomplete
+    error TransferFailed(); // Thrown if fund transfer fails
+
+    // Struct to track transaction phase and timestamp for transparency
+    struct Phase {
+        uint8 id; // Phase ID (0: Created, 1: EarnestDeposited, 2: Approved, 3: FullyFunded, 4: Completed, 5: Cancelled)
+        uint256 timestamp; // Timestamp when phase was entered
     }
+    Phase public currentPhase = Phase(0, block.timestamp); // Initialize to Created phase
 
-    modifier onlyInspector() { // Modifier to restrict function access to only the inspector.
-        require(msg.sender == inspector, "Only inspector can call this function"); // Checks if the caller is the inspector, reverts with a message if not.
-        _; // Placeholder for the modified function's body.
-    }
+    // Approval status for each party (true if approved)
+    mapping(address => bool) public approvals;
 
-    bool public inspectionPassed = false;
+    // Inspection status (true if passed)
+    bool public inspectionPassed;
 
-    constructor( // Constructor function to initialize the Escrow contract with all necessary parameters.
-        address _nftAddress, // Parameter for the NFT contract address.
-        uint256 _nftID, // Parameter for the NFT ID.
-        uint256 _purchasePrice, // Parameter for the purchase price.
-        uint256 _escrowAmount, // Parameter for the escrow amount.
-        address payable _seller, // Parameter for the seller's address.
-        address payable _buyer, // Parameter for the buyer's address.
-        address _inspector, // Parameter for the inspector's address.
-        address _lender // Parameter for the lender's address.
+    // Events for off-chain tracking and user interface updates
+    event EarnestMoneyDeposited(address indexed buyer, uint256 amount, uint256 timestamp);
+    event InspectionStatusUpdated(address indexed inspector, bool passed, uint256 timestamp);
+    event ApprovalGranted(address indexed approver, string role, uint256 timestamp);
+    event FullPriceFunded(address indexed funder, uint256 amount, uint256 timestamp);
+    event TransactionFinalized(address indexed buyer, address indexed seller, uint256 amount, uint256 timestamp);
+    event TransactionCancelled(bool inspectionFailed, uint256 refundedAmount, address indexed recipient, uint256 timestamp);
+
+    // Constructor to initialize the escrow with transaction details
+    constructor(
+        address _nftAddress, // Address of the RealEstate NFT contract
+        uint256 _nftID, // NFT ID for the property
+        uint256 _purchasePrice, // Full purchase price
+        uint256 _escrowAmount, // Earnest money required
+        address payable _seller, // Seller's address
+        address payable _buyer, // Buyer's address
+        address _inspector, // Inspector's address
+        address _lender // Lender's address
     ) {
-        nftAddress = _nftAddress; // Assigns the NFT contract address to the public variable.
-        nftID = _nftID; // Assigns the NFT ID to the public variable.
-        purchasePrice = _purchasePrice; // Assigns the purchase price to the public variable.
-        escrowAmount = _escrowAmount; // Assigns the escrow amount to the public variable.
-        seller = _seller;  // Assigns the seller's address to the public variable (note: fixed typo with space after =).
-        buyer = _buyer; // Assigns the buyer's address to the public variable.
-        inspector = _inspector; // Assigns the inspector's address to the public variable.
-        lender = _lender; // Assigns the lender's address to the public variable.
+        nftAddress = _nftAddress;
+        nftID = _nftID;
+        purchasePrice = _purchasePrice;
+        escrowAmount = _escrowAmount;
+        seller = _seller;
+        buyer = _buyer;
+        inspector = _inspector;
+        lender = _lender;
     }
 
-
-
-    // Function for buyer to deposit earnest money
-    function depositEarnest() external payable onlyBuyer() { // Public payable function allowing the buyer to deposit earnest money, restricted by onlyBuyer modifier.
-        // require(msg.sender == buyer, "Only buyer can deposit earnest money"); // Commented out redundant check since onlyBuyer modifier already handles it.
-        require(msg.value == escrowAmount); // Ensures the deposited value matches the required escrow amount, reverts if not.
+    // Modifier to restrict functions to specific roles
+    modifier onlyRole(string memory _role) {
+        if (keccak256(abi.encodePacked(_role)) == keccak256(abi.encodePacked("buyer")) && msg.sender != buyer) {
+            revert Unauthorized("buyer");
+        } else if (keccak256(abi.encodePacked(_role)) == keccak256(abi.encodePacked("inspector")) && msg.sender != inspector) {
+            revert Unauthorized("inspector");
+        } else if (keccak256(abi.encodePacked(_role)) == keccak256(abi.encodePacked("lender")) && msg.sender != lender) {
+            revert Unauthorized("lender");
+        } else if (keccak256(abi.encodePacked(_role)) == keccak256(abi.encodePacked("seller")) && msg.sender != seller) {
+            revert Unauthorized("seller");
+        }
+        _;
     }
 
-    function updateInspectionStatus(bool _passed) public onlyInspector{
-        inspectionPassed = _passed; // Public function to update the inspection status, setting it to true or false based on the input.
+    // Modifier to restrict functions to specific transaction phases
+    modifier atPhase(uint8 _phase) {
+        if (currentPhase.id != _phase) {
+            revert InvalidPhase(_phase, currentPhase.id);
+        }
+        _;
     }
 
-    function getBalance() public view returns (uint) { // Public view function to retrieve the current balance of the Escrow contract.
-        return address(this).balance; // Returns the Ether balance of the contract itself.
+    // Deposit earnest money (buyer only, first step, advances to EarnestDeposited)
+    function depositEarnest() external payable onlyRole("buyer") atPhase(0) {
+        // Ensure the deposit meets or exceeds the required earnest amount
+        if (msg.value < escrowAmount) {
+            revert InsufficientDeposit(escrowAmount, msg.value);
+        }
+        // Update phase to EarnestDeposited and record timestamp
+        currentPhase = Phase(1, block.timestamp);
+        // Emit event for tracking
+        emit EarnestMoneyDeposited(msg.sender, msg.value, block.timestamp);
     }
 
-    // Finalize the sale (with check for deposit)
-    function finalizeSale() public { // Public function to finalize the sale, transferring the NFT if conditions are met.
-        // Ensure earnest money has been deposited
-        require(address(this).balance >= escrowAmount, "Earnest money not deposited"); // Checks if the contract's balance is at least the escrow amount, reverts if not.
-        // Transfer NFT from seller to buyer
-        IERC721(nftAddress).transferFrom(seller, buyer, nftID); // Calls transferFrom on the NFT contract to move the NFT from seller to buyer.
-        // Optionally: Transfer the deposited funds to the seller
-        // seller.transfer(address(this).balance); // Commented out optional transfer of funds to the seller.
+    // Update inspection status (inspector only, after earnest deposit)
+    function updateInspectionStatus(bool _passed) external onlyRole("inspector") atPhase(1) {
+        // Set inspection status based on inspector's input
+        inspectionPassed = _passed;
+        // Emit event for tracking
+        emit InspectionStatusUpdated(msg.sender, _passed, block.timestamp);
+    }
+
+    // Approve transaction by role (buyer, seller, lender, after earnest deposit, advances to Approved if all done)
+    function approveByRole(string memory _role) external onlyRole(_role) atPhase(1) {
+        // Record approval for the caller
+        approvals[msg.sender] = true;
+        // Emit event with role for clarity
+        emit ApprovalGranted(msg.sender, _role, block.timestamp);
+        // Check if all required parties have approved
+        if (approvals[buyer] && approvals[seller] && approvals[lender]) {
+            // Advance to Approved phase
+            currentPhase = Phase(2, block.timestamp);
+        }
+    }
+
+    // Deposit remaining funds to reach full purchase price (buyer or lender, after approvals, advances to FullyFunded)
+    function depositFullPrice() external payable atPhase(2) {
+        // Allow buyer or lender to deposit (flexible for real-world scenarios)
+        if (msg.sender != buyer && msg.sender != lender) {
+            revert Unauthorized("buyer or lender");
+        }
+        // Emit event for tracking
+        emit FullPriceFunded(msg.sender, msg.value, block.timestamp);
+        // Advance to FullyFunded if total balance meets or exceeds purchase price
+        if (address(this).balance >= purchasePrice) {
+            currentPhase = Phase(3, block.timestamp);
+        }
+    }
+
+    // Finalize the sale (anyone can trigger, after full funding, non-reentrant)
+    function finalizeSale() external nonReentrant atPhase(3) {
+        // Ensure inspection has passed
+        if (!inspectionPassed) {
+            revert InspectionNotPassed();
+        }
+        // Ensure all parties have approved
+        if (!approvals[buyer] || !approvals[seller] || !approvals[lender]) {
+            revert NotAllApproved();
+        }
+        // Ensure full purchase price is deposited
+        if (address(this).balance < purchasePrice) {
+            revert InsufficientDeposit(purchasePrice, address(this).balance);
+        }
+
+        // Transfer all funds to seller
+        (bool success, ) = seller.call{value: address(this).balance}("");
+        if (!success) {
+            revert TransferFailed();
+        }
+
+        // Transfer NFT to buyer
+        IERC721(nftAddress).transferFrom(seller, buyer, nftID);
+
+        // Update phase to Completed
+        currentPhase = Phase(4, block.timestamp);
+        // Emit event for tracking
+        emit TransactionFinalized(buyer, seller, address(this).balance, block.timestamp);
+    }
+
+    // Cancel the sale (before completion, non-reentrant)
+    function cancelSale() external nonReentrant {
+        // Ensure sale isn't already finalized or cancelled
+        if (currentPhase.id == 4 || currentPhase.id == 5) {
+            revert InvalidPhase(3, currentPhase.id); // Use 3 as a generic "active" phase
+        }
+
+        uint256 balance = address(this).balance;
+        address payable recipient;
+        bool inspectionFailed = !inspectionPassed;
+
+        // Refund to buyer if inspection failed, otherwise forfeit to seller
+        if (inspectionFailed) {
+            recipient = buyer;
+        } else {
+            recipient = seller;
+        }
+
+        // Transfer funds to appropriate party
+        (bool success, ) = recipient.call{value: balance}("");
+        if (!success) {
+            revert TransferFailed();
+        }
+
+        // Update phase to Cancelled
+        currentPhase = Phase(5, block.timestamp);
+        // Emit event for tracking
+        emit TransactionCancelled(inspectionFailed, balance, recipient, block.timestamp);
+    }
+
+    // Fallback to accept direct Ether deposits (for flexibility, but prefer depositFullPrice)
+    receive() external payable {
+        // No phase advancement here to encourage use of depositFullPrice
+    }
+
+    // View function to check contract balance
+    function getBalance() external view returns (uint256) {
+        return address(this).balance;
     }
 }
