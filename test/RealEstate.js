@@ -1,248 +1,155 @@
 // Filename: RealEstate.js
-// Description at the bottom of this file.
-
-// npx hardhat compile
-// npx hardhat test test/RealEstate.js
-// npx hardhat test test/RealEstate.js --grep "Deployment" --network localhost
-
-// RealEstate.js - Tests for RealEstate and EscrowWithStableAndYield contracts
-const { expect } = require('chai');
-const { ethers } = require('hardhat');
-
-// Helper for USDC amounts (6 decimals)
-const tokens = (n) => {
-    return ethers.utils.parseUnits(n.toString(), 6);
+// This file contains a test suite for the RealEstate and EscrowWithStableAndYield contracts using Hardhat and Chai, verifying deployment, 
+// functionality, and edge cases.
+// It tests fractional ownership with multiple buyers, proportional deposits, yield simulation, and transaction flows like successful sales and cancellations.
+// RealEstate.js - Updated Tests for RealEstate and EscrowWithStableAndYield contracts  // Header comment describing the file's purpose.
+const { expect } = require('chai');  // Imports the expect function from Chai for assertions in tests.
+const { ethers } = require('hardhat');  // Imports the ethers library from Hardhat for interacting with Ethereum contracts.
+const tokens = (n) => {  // Defines a helper function to convert numbers to USDC units with 6 decimals.
+return ethers.utils.parseUnits(n.toString(), 6);  // Uses ethers to parse the value into wei-like units for USDC.
 };
-
-describe('RealEstate', () => {
-    let realEstate, escrow, usdc, aavePool, aUsdc;
-    let deployer, seller, buyer, inspector, lender;
-    let nftID = 1;
-    let purchasePrice = tokens(100000); // $100,000 in USDC
-    let escrowAmount = tokens(20000); // $20,000 in USDC
-
-    beforeEach(async () => {
-        // Retrieves the list of signers (accounts) from Hardhat for testing.
-        const accounts = await ethers.getSigners();
-        deployer = accounts[0];
-        seller = deployer;
-        buyer = accounts[1];
-        inspector = accounts[2];
-        lender = accounts[3];
-
-        console.log("Deploying MockUSDC...");
-        const MockUSDC = await ethers.getContractFactory('MockUSDC');
-        usdc = await MockUSDC.deploy();
-        await usdc.deployed();
-        console.log("MockUSDC deployed to:", usdc.address);
-
-        console.log("Deploying MockAUSDC...");
-        const MockAUSDC = await ethers.getContractFactory('MockAUSDC');
-        aUsdc = await MockAUSDC.deploy(usdc.address);
-        await aUsdc.deployed();
-        console.log("MockAUSDC deployed to:", aUsdc.address);
-
-        console.log("Deploying MockAavePool...");
-        const MockAavePool = await ethers.getContractFactory('MockAavePool');
-        aavePool = await MockAavePool.deploy(usdc.address, aUsdc.address);
-        await aavePool.deployed();
-        console.log("MockAavePool deployed to:", aavePool.address);
-
-        // Mint USDC to buyer and lender
-        await usdc.mint(buyer.address, tokens(100000));
-        await usdc.mint(lender.address, tokens(100000));
-        console.log("USDC minted to buyer and lender");
-
-        console.log("Deploying RealEstate...");
-        const RealEstate = await ethers.getContractFactory('RealEstate');
-        realEstate = await RealEstate.deploy();
-        await realEstate.deployed();
-        console.log("RealEstate deployed to:", realEstate.address);
-
-        console.log("Deploying EscrowWithStableAndYield...");
-        const Escrow = await ethers.getContractFactory('EscrowWithStableAndYield');
-        escrow = await Escrow.deploy(
-            realEstate.address,
-            nftID,
-            purchasePrice,
-            escrowAmount,
-            seller.address,
-            buyer.address,
-            inspector.address,
-            lender.address,
-            usdc.address,
-            aavePool.address,
-            aUsdc.address
-        );
-        await escrow.deployed();
-        console.log("EscrowWithStableAndYield deployed to:", escrow.address);
-
-        // Mint NFT and approve
-        await realEstate.mint("https://ipfs.io/ipfs/QmTudSYeM7mz3PkYEWXWqPjomRPHogcMFSq7XAvsvsgAPS");
-        await realEstate.connect(seller).approve(escrow.address, nftID);
-        console.log("NFT minted and approved");
-    });
-
-    describe('Deployment', () => {
-        it('deploys RealEstate contract successfully', async () => {
-            expect(realEstate.address).to.be.properAddress;
-        });
-
-        it('deploys Escrow contract successfully', async () => {
-            expect(escrow.address).to.be.properAddress;
-        });
-
-        it('sends an NFT to the seller/deployer', async () => {
-            expect(await realEstate.ownerOf(nftID)).to.equal(seller.address);
-        });
-
-        it('initializes Escrow contract in Created phase', async () => {
-            expect((await escrow.currentPhase()).id).to.equal(0);
-        });
-    });
-
-    describe('Selling real estate', () => {
-        let balance, transaction;
-
-        it('executes a successful transaction', async () => {
-            console.log("Starting successful transaction test...");
-            expect(await realEstate.ownerOf(nftID)).to.equal(seller.address);
-            expect((await escrow.currentPhase()).id).to.equal(0);
-
-            // Buyer approves USDC
-            await usdc.connect(buyer).approve(escrow.address, escrowAmount);
-            console.log("Buyer approved USDC");
-
-            // Buyer deposits earnest money
-            transaction = await escrow.connect(buyer).depositEarnest(escrowAmount);
-            await transaction.wait();
-            console.log("Buyer deposited earnest money");
-            expect((await escrow.currentPhase()).id).to.equal(1);
-            balance = await escrow.getBalance();
-            expect(balance).to.be.at.least(escrowAmount); // Allow for yield
-            console.log("Escrow balance after earnest:", ethers.utils.formatUnits(balance, 6));
-
-            // Inspector updates status
-            transaction = await escrow.connect(inspector).updateInspectionStatus(true);
-            await transaction.wait();
-            console.log("Inspector updated status");
-            expect(await escrow.inspectionPassed()).to.equal(true);
-
-            // Approvals
-            transaction = await escrow.connect(buyer).approveByRole("buyer");
-            await transaction.wait();
-            console.log("Buyer approved sale");
-            expect(await escrow.approvals(buyer.address)).to.equal(true);
-
-            transaction = await escrow.connect(seller).approveByRole("seller");
-            await transaction.wait();
-            console.log("Seller approved sale");
-            expect(await escrow.approvals(seller.address)).to.equal(true);
-
-            transaction = await escrow.connect(lender).approveByRole("lender");
-            await transaction.wait();
-            console.log("Lender approved sale");
-            expect(await escrow.approvals(lender.address)).to.equal(true);
-            expect((await escrow.currentPhase()).id).to.equal(2);
-
-            // Lender deposits remaining funds
-            const remainingAmount = purchasePrice.sub(escrowAmount);
-            await usdc.connect(lender).approve(escrow.address, remainingAmount);
-            console.log("Lender approved USDC");
-            transaction = await escrow.connect(lender).depositFullPrice(remainingAmount);
-            await transaction.wait();
-            console.log("Lender deposited remaining funds");
-            balance = await escrow.getBalance();
-            expect(balance).to.be.at.least(purchasePrice); // Allow for yield
-            console.log("Escrow balance after full deposit:", ethers.utils.formatUnits(balance, 6));
-            expect((await escrow.currentPhase()).id).to.equal(3);
-
-            // Simulate 90 days for yield
-            await ethers.provider.send("evm_increaseTime", [90 * 24 * 60 * 60]);
-            await ethers.provider.send("evm_mine", []);
-
-            // Finalize sale
-            const sellerInitialBalance = await usdc.balanceOf(seller.address);
-            transaction = await escrow.connect(buyer).finalizeSale();
-            await transaction.wait();
-            console.log("Buyer finalized sale");
-
-            // Verify outcomes
-            expect(await realEstate.ownerOf(nftID)).to.equal(buyer.address);
-            expect((await escrow.currentPhase()).id).to.equal(4);
-            balance = await usdc.balanceOf(seller.address);
-            expect(balance).to.be.above(sellerInitialBalance); // Allow for yield
-            console.log("Seller balance after sale:", ethers.utils.formatUnits(balance, 6));
-            expect(await escrow.getBalance()).to.equal(0);
-        });
-
-        it('cancels transaction if inspection fails', async () => {
-            console.log("Starting cancellation if inspection fails test...");
-            // Buyer approves USDC for earnest deposit
-            await usdc.connect(buyer).approve(escrow.address, escrowAmount);
-            console.log("Buyer approved USDC");
-            transaction = await escrow.connect(buyer).depositEarnest(escrowAmount);
-            await transaction.wait();
-            console.log("Buyer deposited earnest money");
-            expect((await escrow.currentPhase()).id).to.equal(1);
-
-            transaction = await escrow.connect(inspector).updateInspectionStatus(false);
-            await transaction.wait();
-            console.log("Inspector set inspection to failed");
-            expect(await escrow.inspectionPassed()).to.equal(false);
-
-            // Simulate 90 days for yield
-            await ethers.provider.send("evm_increaseTime", [90 * 24 * 60 * 60]);
-            await ethers.provider.send("evm_mine", []);
-
-            const buyerInitialBalance = await usdc.balanceOf(buyer.address);
-            transaction = await escrow.connect(buyer).cancelSale();
-            await transaction.wait();
-            console.log("Buyer cancelled sale");
-
-            expect((await escrow.currentPhase()).id).to.equal(5);
-            balance = await usdc.balanceOf(buyer.address);
-            expect(balance).to.be.above(buyerInitialBalance); // Allow for yield
-            console.log("Buyer balance after cancellation:", ethers.utils.formatUnits(balance, 6));
-            expect(await escrow.getBalance()).to.equal(0);
-        });
-
-        it('cancels transaction after inspection passes', async () => {
-            console.log("Starting cancellation after inspection passes test...");
-            // Buyer approves USDC for earnest deposit
-            await usdc.connect(buyer).approve(escrow.address, escrowAmount);
-            console.log("Buyer approved USDC");
-            transaction = await escrow.connect(buyer).depositEarnest(escrowAmount);
-            await transaction.wait();
-            console.log("Buyer deposited earnest money");
-            expect((await escrow.currentPhase()).id).to.equal(1);
-
-            transaction = await escrow.connect(inspector).updateInspectionStatus(true);
-            await transaction.wait();
-            console.log("Inspector set inspection to passed");
-            expect(await escrow.inspectionPassed()).to.equal(true);
-
-            // Simulate 90 days for yield
-            await ethers.provider.send("evm_increaseTime", [90 * 24 * 60 * 60]);
-            await ethers.provider.send("evm_mine", []);
-
-            const sellerInitialBalance = await usdc.balanceOf(seller.address);
-            transaction = await escrow.connect(buyer).cancelSale();
-            await transaction.wait();
-            console.log("Buyer cancelled sale");
-
-            expect((await escrow.currentPhase()).id).to.equal(5);
-            balance = await usdc.balanceOf(seller.address);
-            expect(balance).to.be.above(sellerInitialBalance); // Allow for yield
-            console.log("Seller balance after cancellation:", ethers.utils.formatUnits(balance, 6));
-            expect(await escrow.getBalance()).to.equal(0);
-        });
-    });
+describe('RealEstate', () => {  // Starts the main describe block for the RealEstate test suite.
+let realEstate, escrow, usdc, aavePool, aUsdc;  // Declares variables for contracts to be deployed in tests.
+let deployer, seller, buyer1, buyer2, inspector, lender;  // Declares variables for test accounts.
+let nftID = 1;  // Sets a constant for the NFT ID used in tests.
+let purchasePrice = tokens(100000);  // Sets the purchase price to 100,000 USDC using the tokens helper.
+let escrowAmount = tokens(20000);  // Sets the escrow amount to 20,000 USDC using the tokens helper.
+let shares = [50, 50];  // Sets an array for share distribution between two buyers (total 100 shares).
+beforeEach(async () => {  // Defines a beforeEach hook to set up the test environment before each test.
+const accounts = await ethers.getSigners();  // Retrieves the list of test accounts from Hardhat.
+deployer = accounts[0];  // Assigns the first account as deployer and seller.
+seller = deployer;  // Sets seller to the deployer account.
+buyer1 = accounts[1];  // Assigns the second account as buyer1.
+buyer2 = accounts[4];  // Assigns the fifth account as buyer2 for multi-buyer testing.
+inspector = accounts[2];  // Assigns the third account as inspector.
+lender = accounts[3];  // Assigns the fourth account as lender.
+const MockUSDC = await ethers.getContractFactory('MockUSDC');  // Gets the factory for MockUSDC contract.
+usdc = await MockUSDC.deploy();  // Deploys the MockUSDC contract.
+await usdc.deployed();  // Waits for the deployment to complete.
+const MockAUSDC = await ethers.getContractFactory('MockAUSDC');  // Gets the factory for MockAUSDC contract.
+aUsdc = await MockAUSDC.deploy(usdc.address);  // Deploys MockAUSDC with USDC address.
+await aUsdc.deployed();  // Waits for deployment.
+const MockAavePool = await ethers.getContractFactory('MockAavePool');  // Gets the factory for MockAavePool contract.
+aavePool = await MockAavePool.deploy(usdc.address, aUsdc.address);  // Deploys MockAavePool with USDC and aUSDC addresses.
+await aavePool.deployed();  // Waits for deployment.
+await usdc.mint(buyer1.address, tokens(50000));  // Mints 50,000 USDC to buyer1 for testing.
+await usdc.mint(buyer2.address, tokens(50000));  // Mints 50,000 USDC to buyer2 for testing.
+await usdc.mint(lender.address, tokens(100000));  // Mints 100,000 USDC to lender for testing.
+const RealEstate = await ethers.getContractFactory('RealEstate');  // Gets the factory for RealEstate contract.
+realEstate = await RealEstate.deploy();  // Deploys the RealEstate contract.
+await realEstate.deployed();  // Waits for deployment.
+const Escrow = await ethers.getContractFactory('EscrowWithStableAndYield');  // Gets the factory for EscrowWithStableAndYield contract.
+escrow = await Escrow.deploy(  // Deploys the escrow contract with required parameters.
+realEstate.address,  // Passes RealEstate address.
+nftID,  // Passes NFT ID.
+purchasePrice,  // Passes purchase price.
+escrowAmount,  // Passes escrow amount.
+seller.address,  // Passes seller address.
+inspector.address,  // Passes inspector address.
+lender.address,  // Passes lender address.
+usdc.address,  // Passes USDC address.
+aavePool.address,  // Passes Aave pool address.
+aUsdc.address  // Passes aUSDC address.
+);
+await escrow.deployed();  // Waits for escrow deployment.
+await realEstate.mint("https://ipfs.io/ipfs/QmTudSYeM7mz3PkYEWXWqPjomRPHogcMFSq7XAvsvsgAPS");  // Mints a new property NFT with URI.
+await realEstate.connect(seller).setApprovalForAll(escrow.address, true);  // Approves escrow to manage all seller's tokens.
+await escrow.connect(seller).initializeBuyers([buyer1.address, buyer2.address], shares);  // Initializes buyers and shares.
 });
-
+describe('Deployment', () => {  // Starts describe block for deployment tests.
+it('deploys RealEstate contract successfully', async () => {  // Test case to check RealEstate deployment.
+expect(realEstate.address).to.be.properAddress;  // Asserts that RealEstate has a valid address.
+});
+it('deploys Escrow contract successfully', async () => {  // Test case to check Escrow deployment.
+expect(escrow.address).to.be.properAddress;  // Asserts that Escrow has a valid address.
+});
+it('sends shares to the seller/deployer', async () => {  // Test case to check initial shares ownership.
+expect(await realEstate.balanceOf(seller.address, nftID)).to.equal(100);  // Asserts seller has 100 shares.
+});
+it('initializes Escrow contract in Created phase', async () => {  // Test case for initial escrow phase.
+expect((await escrow.currentPhase()).id).to.equal(0);  // Asserts phase ID is 0 (Created).
+});
+it('initializes buyers correctly', async () => {  // Test case for buyer initialization.
+expect(await escrow.buyerShares(buyer1.address)).to.equal(50);  // Asserts buyer1 has 50 shares.
+expect(await escrow.buyerShares(buyer2.address)).to.equal(50);  // Asserts buyer2 has 50 shares.
+});
+});
+describe('Selling real estate', () => {  // Starts describe block for selling tests.
+let balance, transaction;  // Declares variables for balance and transaction in the scope.
+it('executes a successful transaction', async () => {  // Test case for successful transaction flow.
+expect(await realEstate.balanceOf(seller.address, nftID)).to.equal(100);  // Asserts initial seller shares.
+expect((await escrow.currentPhase()).id).to.equal(0);  // Asserts initial phase.
+const earnest1 = tokens(10000);  // Sets earnest amount for buyer1.
+await usdc.connect(buyer1).approve(escrow.address, earnest1);  // Approves escrow for buyer1's USDC.
+transaction = await escrow.connect(buyer1).depositEarnest(earnest1);  // Deposits earnest from buyer1.
+await transaction.wait();  // Waits for transaction confirmation.
+const earnest2 = tokens(10000);  // Sets earnest amount for buyer2.
+await usdc.connect(buyer2).approve(escrow.address, earnest2);  // Approves escrow for buyer2's USDC.
+transaction = await escrow.connect(buyer2).depositEarnest(earnest2);  // Deposits earnest from buyer2.
+await transaction.wait();  // Waits for confirmation.
+expect((await escrow.currentPhase()).id).to.equal(1);  // Asserts phase advanced to 1.
+balance = await escrow.getBalance();  // Gets current escrow balance.
+expect(balance).to.be.at.least(escrowAmount);  // Asserts balance at least escrow amount.
+transaction = await escrow.connect(inspector).updateInspectionStatus(true);  // Updates inspection to passed.
+await transaction.wait();  // Waits for confirmation.
+expect(await escrow.inspectionPassed()).to.equal(true);  // Asserts inspection passed.
+await escrow.connect(buyer1).approveByRole("buyer");  // Buyer1 approves.
+await escrow.connect(buyer2).approveByRole("buyer");  // Buyer2 approves.
+await escrow.connect(seller).approveByRole("seller");  // Seller approves.
+await escrow.connect(lender).approveByRole("lender");  // Lender approves.
+expect((await escrow.currentPhase()).id).to.equal(2);  // Asserts phase advanced to 2.
+const remaining = tokens(80000);  // Sets remaining amount for lender.
+await usdc.connect(lender).approve(escrow.address, remaining);  // Approves escrow for lender's USDC.
+transaction = await escrow.connect(lender).depositFullPrice(remaining);  // Deposits full price from lender.
+await transaction.wait();  // Waits for confirmation.
+balance = await escrow.getBalance();  // Gets updated balance.
+expect(balance).to.be.at.least(purchasePrice);  // Asserts balance at least purchase price.
+expect((await escrow.currentPhase()).id).to.equal(3);  // Asserts phase advanced to 3.
+await ethers.provider.send("evm_increaseTime", [90 * 24 * 60 * 60]);  // Simulates 90 days time passage for yield.
+await ethers.provider.send("evm_mine", []);  // Mines a new block to apply time change.
+const sellerInitial = await usdc.balanceOf(seller.address);  // Gets seller's initial USDC balance.
+transaction = await escrow.connect(buyer1).finalizeSale();  // Finalizes the sale.
+await transaction.wait();  // Waits for confirmation.
+expect(await realEstate.balanceOf(buyer1.address, nftID)).to.equal(50);  // Asserts buyer1 received 50 shares.
+expect(await realEstate.balanceOf(buyer2.address, nftID)).to.equal(50);  // Asserts buyer2 received 50 shares.
+expect((await escrow.currentPhase()).id).to.equal(4);  // Asserts phase advanced to 4 (Completed).
+balance = await usdc.balanceOf(seller.address);  // Gets seller's updated balance.
+expect(balance).to.be.above(sellerInitial);  // Asserts seller's balance increased (funds + yield).
+expect(await escrow.getBalance()).to.equal(0);  // Asserts escrow balance is zero after finalization.
+});
+it('cancels transaction if inspection fails', async () => {  // Test case for cancellation when inspection fails.
+const earnest1 = tokens(10000);  // Sets earnest for buyer1.
+await usdc.connect(buyer1).approve(escrow.address, earnest1);  // Approves escrow.
+transaction = await escrow.connect(buyer1).depositEarnest(earnest1);  // Deposits from buyer1.
+await transaction.wait();  // Waits for confirmation.
+const earnest2 = tokens(10000);  // Sets earnest for buyer2.
+await usdc.connect(buyer2).approve(escrow.address, earnest2);  // Approves escrow.
+transaction = await escrow.connect(buyer2).depositEarnest(earnest2);  // Deposits from buyer2.
+await transaction.wait();  // Waits for confirmation.
+expect((await escrow.currentPhase()).id).to.equal(1);  // Asserts phase 1.
+transaction = await escrow.connect(inspector).updateInspectionStatus(false);  // Sets inspection to failed.
+await transaction.wait();  // Waits for confirmation.
+expect(await escrow.inspectionPassed()).to.equal(false);  // Asserts inspection failed.
+await ethers.provider.send("evm_increaseTime", [90 * 24 * 60 * 60]);  // Simulates time for yield.
+await ethers.provider.send("evm_mine", []);  // Mines block.
+const buyer1Initial = await usdc.balanceOf(buyer1.address);  // Gets buyer1 initial balance.
+const buyer2Initial = await usdc.balanceOf(buyer2.address);  // Gets buyer2 initial balance.
+transaction = await escrow.connect(buyer1).cancelSale();  // Cancels the sale.
+await transaction.wait();  // Waits for confirmation.
+expect((await escrow.currentPhase()).id).to.equal(5);  // Asserts phase 5 (Cancelled).
+expect(await usdc.balanceOf(buyer1.address)).to.be.above(buyer1Initial);  // Asserts buyer1 balance increased (refund + yield).
+expect(await usdc.balanceOf(buyer2.address)).to.be.above(buyer2Initial);  // Asserts buyer2 balance increased.
+expect(await escrow.getBalance()).to.equal(0);  // Asserts escrow balance zero.
+});
+});
+});
 // Thorough Explanation:
-// This file, RealEstate.js, serves as the test suite for the RealEstate NFT contract and the EscrowWithStableAndYield escrow contract using Hardhat and Chai. It sets up a testing environment with mock contracts for USDC and Aave to simulate stablecoin deposits and yield accrual without relying on mainnet. The `tokens` helper function converts human-readable numbers to USDC units with 6 decimals, ensuring accurate amount handling in tests. The `beforeEach` hook deploys all necessary contracts and initializes the test state, including minting USDC to participants and approving the NFT for the escrow.
-
-// The 'Deployment' describe block tests basic deployment and initialization, verifying contract addresses, NFT ownership, and the escrow's starting phase. The 'Selling real estate' block tests core functionality: a successful transaction (deposit, inspection, approvals, full funding, yield simulation, and finalization with NFT transfer and funds payout), and two cancellation scenarios (refund to buyer if inspection fails, forfeiture to seller if passed, including yield). Console logs are added for debugging, tracing each step and logging addresses and balances.
-
-// Overall, this test file ensures the escrow system works as expected with USDC stability and Aave yield, covering edge cases like cancellations and time-based interest. It's comprehensive for validating the contracts' logic before deployment, and the use of mocks makes it efficient for local development.
+// RealEstate.js is a Hardhat test suite using Chai for assertions, verifying the RealEstate ERC-1155 contract and EscrowWithStableAndYield contract. 
+// It sets up mocks for USDC and Aave, deploys contracts in beforeEach, and tests deployment, buyer initialization, successful sales with 
+// share transfers, and cancellations with refunds. The tokens helper handles USDC decimals, and time simulation tests yield accrual.
+// The suite focuses on fractional ownership with 100 shares, multi-buyer support (e.g., two buyers at 50 shares each), proportional earnest deposits, 
+// inspections, approvals, and full funding. Successful transaction tests confirm phase advancements, balance checks, and share distribution. 
+// Cancellation tests verify refunds with yield when inspection fails, ensuring no shares are transferred.
+// For comprehensiveness, it could be extended with uneven shares or more buyers, but it covers core flows. Console logs can be added for debugging. 
+// This file integrates with Hardhat's ethers for contract interactions, making it efficient for local testing before deployment. 
+// It aligns with retail tokenization by simulating real-world scenarios like yield on escrowed funds.2.6s

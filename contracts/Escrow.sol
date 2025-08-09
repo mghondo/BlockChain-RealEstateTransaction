@@ -217,8 +217,17 @@ contract Escrow is ReentrancyGuard {
 }
 
 // Thorough Explanation:
-// Escrow.sol is the original version of the escrow contract designed for managing real estate transactions using native ETH on Ethereum. It handles a multi-step process for a property sale represented as an NFT, including earnest money deposit, inspection, approvals from buyer, seller, and lender, full funding, finalization with NFT transfer, and cancellation logic. The contract uses immutable variables for gas efficiency, custom errors for cost-effective reverts, and a phase struct to track transaction progress with timestamps. Security is enhanced with ReentrancyGuard to prevent reentrancy attacks, and events are emitted for off-chain tracking.
+// Escrow.sol is the original version of the escrow contract designed for managing real estate transactions using native ETH on Ethereum. 
+// It handles a multi-step process for a property sale represented as an NFT, including earnest money deposit, inspection, approvals from buyer,
+// seller, and lender, full funding, finalization with NFT transfer, and cancellation logic. 
+// The contract uses immutable variables for gas efficiency, custom errors for cost-effective reverts, and a phase struct to track transaction 
+// progress with timestamps. Security is enhanced with ReentrancyGuard to prevent reentrancy attacks, and events are emitted for off-chain tracking.
 
-//The contract ensures only authorized roles can perform actions via the `onlyRole` modifier, and phases are enforced with the `atPhase` modifier to maintain sequence. Deposits are checked for sufficiency, and funds are transferred securely using low-level calls. Cancellation refunds or forfeits funds based on inspection status, making it suitable for real-world escrow scenarios where trust and transparency are key. This version does not include stablecoin or yield features, focusing on basic ETH handling.
+//The contract ensures only authorized roles can perform actions via the `onlyRole` modifier, and phases are enforced with the `atPhase` 
+// modifier to maintain sequence. Deposits are checked for sufficiency, and funds are transferred securely using low-level calls. Cancellation 
+// refunds or forfeits funds based on inspection status, making it suitable for real-world escrow scenarios where trust and transparency are key. 
+// This version does not include stablecoin or yield features, focusing on basic ETH handling.
 
-// This basic implementation provides a foundation for the advanced EscrowWithStableAndYield.sol, which adds USDC stability and Aave yield. It's ideal for learning Solidity patterns like interfaces, modifiers, and events, but for production, consider audits and upgrades for volatility mitigation. The code is concise yet comprehensive, with room for expansions like time-locks or oracle integrations.
+// This basic implementation provides a foundation for the advanced EscrowWithStableAndYield.sol, which adds USDC stability and Aave yield. 
+// It's ideal for learning Solidity patterns like interfaces, modifiers, and events, but for production, consider audits and upgrades for 
+// volatility mitigation. The code is concise yet comprehensive, with room for expansions like time-locks or oracle integrations.

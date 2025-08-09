@@ -52,8 +52,13 @@ contract MockAavePool {
 }
 
 // Thorough Explanation:
-// MockAavePool.sol is a mock contract that simulates Aave v3's lending pool for testing purposes. It handles supply and withdraw functions, integrating with MockAUSDC for yield simulation. The constructor sets references to USDC and aUSDC. The supply function transfers USDC to MockAUSDC and mints aUSDC, mimicking depositing funds into Aave. The withdraw function burns aUSDC and transfers USDC back, handling full withdrawals with type(uint256).max.
+// MockAavePool.sol is a mock contract that simulates Aave v3's lending pool for testing purposes. It handles supply and withdraw functions, 
+// integrating with MockAUSDC for yield simulation. The constructor sets references to USDC and aUSDC. The supply function transfers USDC to MockAUSDC 
+// and mints aUSDC, mimicking depositing funds into Aave. The withdraw function burns aUSDC and transfers USDC back, handling full withdrawals with 
+// type(uint256).max.
 
-// This mock enables local testing of Aave interactions without mainnet, ensuring the escrow contract's yield logic works. It's minimal, focusing on core functions, and assumes valid calls.
+// This mock enables local testing of Aave interactions without mainnet, ensuring the escrow contract's yield logic works. 
+// It's minimal, focusing on core functions, and assumes valid calls.
 
-// The contract is key for isolating Aave dependencies in tests, allowing simulation of liquidity and yield. For more realism, it could include interest rate models or failure modes, but it's sufficient for basic escrow testing.
+// The contract is key for isolating Aave dependencies in tests, allowing simulation of liquidity and yield. For more realism, 
+// it could include interest rate models or failure modes, but it's sufficient for basic escrow testing.
