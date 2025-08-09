@@ -1,6 +1,7 @@
 // Filename: EscrowWithStableAndYield.sol
 // This file defines an advanced escrow contract that manages real estate transactions using USDC stablecoin and earns yield via Aave v3 integration.
 // It supports fractional ownership through ERC-1155 NFTs, handling multiple buyers with proportional deposits, inspections, approvals, and yield distribution upon finalization or cancellation.
+// Revised: Adjusted cancelSale logic to prevent seller from retaining earnest money when backing out (always refunds if seller calls), while buyers forfeit if backing out after inspection passes.
 
 pragma solidity ^0.8.0;  // Sets the Solidity compiler version to 0.8.0 or higher for compatibility and security features.
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";  // Imports ReentrancyGuard from OpenZeppelin to prevent reentrancy attacks in functions dealing with external calls.
@@ -71,63 +72,68 @@ address _aavePool,  // Parameter for Aave pool address.
 address _aUsdc  // Parameter for Aave USDC token address.
 ) {
 config = Config({  // Assigns values to the config struct.
-nftAddress: _nftAddress,  // Sets NFT address in config.
-nftID: _nftID,  // Sets NFT ID in config.
-purchasePrice: _purchasePrice,  // Sets purchase price in config.
-escrowAmount: _escrowAmount,  // Sets escrow amount in config.
-seller: _seller,  // Sets seller in config.
-inspector: _inspector,  // Sets inspector in config.
-lender: _lender,  // Sets lender in config.
-usdc: IERC20(_usdc),  // Sets USDC interface in config.
-aavePool: IPool(_aavePool),  // Sets Aave pool interface in config.
-aUsdc: _aUsdc  // Sets Aave USDC address in config.
+nftAddress: _nftAddress,
+nftID: _nftID,
+purchasePrice: _purchasePrice,
+escrowAmount: _escrowAmount,
+seller: _seller,
+inspector: _inspector,
+lender: _lender,
+usdc: IERC20(_usdc),
+aavePool: IPool(_aavePool),
+aUsdc: _aUsdc
 });
 }
-function initializeBuyers(address[] memory _buyers, uint256[] memory _shares) external {  // Function to initialize multiple buyers and their shares, callable by seller only in phase 0.
-if (msg.sender != config.seller || currentPhase.id != 0 || _buyers.length == 0 || _buyers.length != _shares.length)
-revert InvalidShares();  // Checks if caller is seller, phase is 0, and arrays are valid.
-uint256 totalShares = 0;  // Initializes total shares counter.
-for (uint i = 0; i < _shares.length; i++) {  // Loops through shares array.
-totalShares += _shares[i];  // Accumulates total shares.
-buyers.push(_buyers[i]);  // Adds buyer to the buyers array.
-buyerShares[_buyers[i]] = _shares[i];  // Sets buyer's share in mapping.
-}
-if (totalShares != 100) revert InvalidShares();  // Ensures total shares equal 100.
-emit BuyersInitialized(_buyers, _shares, block.timestamp);  // Emits event for buyer initialization.
-}
 modifier onlyRole(string memory _role) {  // Modifier to restrict access based on role.
-bytes32 roleHash = keccak256(abi.encodePacked(_role));  // Hashes the role string for comparison.
-if (roleHash == keccak256("buyer") && buyerShares[msg.sender] == 0) revert Unauthorized("buyer");  // Checks if buyer role and has shares.
-else if (roleHash == keccak256("inspector") && msg.sender != config.inspector) revert Unauthorized("inspector");  // Checks for inspector role.
-else if (roleHash == keccak256("lender") && msg.sender != config.lender) revert Unauthorized("lender");  // Checks for lender role.
-else if (roleHash == keccak256("seller") && msg.sender != config.seller) revert Unauthorized("seller");  // Checks for seller role.
+bytes32 roleHash = keccak256(abi.encodePacked(_role));  // Computes hash of the role string.
+if (roleHash == keccak256(abi.encodePacked("buyer")) && !isBuyer(msg.sender)) revert Unauthorized("buyer");  // Checks for buyer role.
+if (roleHash == keccak256(abi.encodePacked("seller")) && msg.sender != config.seller) revert Unauthorized("seller");  // Checks for seller role.
+if (roleHash == keccak256(abi.encodePacked("inspector")) && msg.sender != config.inspector) revert Unauthorized("inspector");  // Checks for inspector role.
+if (roleHash == keccak256(abi.encodePacked("lender")) && msg.sender != config.lender) revert Unauthorized("lender");  // Checks for lender role.
 _;  // Proceeds if authorized.
 }
-modifier atPhase(uint8 _phase) {  // Modifier to restrict functions to specific phases.
+function isBuyer(address _addr) internal view returns (bool) {  // Internal function to check if address is a buyer.
+for (uint i = 0; i < buyers.length; i++) {  // Loops through buyers array.
+if (buyers[i] == _addr) return true;  // Returns true if match found.
+}
+return false;  // Returns false if not found.
+}
+modifier atPhase(uint8 _phase) {  // Modifier to restrict to a specific phase.
 if (currentPhase.id != _phase) revert InvalidPhase(_phase, currentPhase.id);  // Reverts if not in required phase.
 _;  // Proceeds if in correct phase.
 }
-function depositEarnest(uint256 _amount) external onlyRole("buyer") atPhase(0) {  // Function for buyers to deposit earnest money in phase 0.
-uint256 required = (config.escrowAmount * buyerShares[msg.sender]) / 100;  // Calculates required proportional amount.
-if (_amount != required) revert InsufficientDeposit(required, _amount);  // Reverts if amount doesn't match required.
-if (!config.usdc.transferFrom(msg.sender, address(this), _amount)) revert TransferFailed();  // Transfers USDC from buyer to contract.
-config.usdc.approve(address(config.aavePool), _amount);  // Approves Aave pool to spend the amount.
-config.aavePool.supply(address(config.usdc), _amount, address(this), 0);  // Supplies the amount to Aave pool.
-buyerEarnestDeposited[msg.sender] = _amount;  // Records the deposited amount for the buyer.
-totalEarnestDeposited += _amount;  // Updates total earnest deposited.
+function initializeBuyers(address[] memory _buyers, uint256[] memory _shares) external onlyRole("seller") atPhase(0) {  // Function to initialize buyers in phase 0, seller only.
+if (_buyers.length != _shares.length || _buyers.length == 0) revert InvalidShares();  // Reverts if invalid input.
+uint256 totalShares = 0;  // Initializes total shares counter.
+for (uint i = 0; i < _buyers.length; i++) {  // Loops through buyers.
+buyers.push(_buyers[i]);  // Adds buyer to array.
+buyerShares[_buyers[i]] = _shares[i];  // Sets shares for buyer.
+totalShares += _shares[i];  // Accumulates total shares.
+}
+if (totalShares != 100) revert InvalidShares();  // Reverts if total not 100.
+emit BuyersInitialized(_buyers, _shares, block.timestamp);  // Emits initialization event.
+}
+function depositEarnest(uint256 _amount) external onlyRole("buyer") atPhase(0) {  // Function for buyers to deposit earnest in phase 0.
+uint256 required = (config.escrowAmount * buyerShares[msg.sender]) / 100;  // Calculates required amount based on shares.
+if (_amount != required) revert InsufficientDeposit(required, _amount);  // Reverts if amount doesn't match.
+if (!config.usdc.transferFrom(msg.sender, address(this), _amount)) revert TransferFailed();  // Transfers USDC from buyer.
+config.usdc.approve(address(config.aavePool), _amount);  // Approves Aave pool for amount.
+config.aavePool.supply(address(config.usdc), _amount, address(this), 0);  // Supplies to Aave.
+buyerEarnestDeposited[msg.sender] += _amount;  // Records buyer's deposit.
+totalEarnestDeposited += _amount;  // Updates total deposited.
 emit EarnestMoneyDeposited(msg.sender, _amount, block.timestamp);  // Emits deposit event.
-if (totalEarnestDeposited == config.escrowAmount) {  // Checks if full earnest is deposited.
+if (totalEarnestDeposited == config.escrowAmount) {  // If all deposited.
 currentPhase = Phase(1, block.timestamp);  // Advances to EarnestDeposited phase.
 }
 }
 function updateInspectionStatus(bool _passed) external onlyRole("inspector") atPhase(1) {  // Function for inspector to update status in phase 1.
-inspectionPassed = _passed;  // Sets the inspection flag.
+inspectionPassed = _passed;  // Sets inspection flag.
 emit InspectionStatusUpdated(msg.sender, _passed, block.timestamp);  // Emits update event.
 }
 function approveByRole(string memory _role) external onlyRole(_role) atPhase(1) {  // Function for parties to approve in phase 1.
-approvals[msg.sender] = true;  // Records approval for the caller.
+approvals[msg.sender] = true;  // Sets approval for caller.
 emit ApprovalGranted(msg.sender, _role, block.timestamp);  // Emits approval event.
-bool allApproved = approvals[config.seller] && approvals[config.lender];  // Checks seller and lender approvals.
+bool allApproved = approvals[config.seller] && approvals[config.lender];  // Checks seller and lender approved.
 for (uint i = 0; i < buyers.length; i++) {  // Loops through buyers.
 allApproved = allApproved && approvals[buyers[i]];  // Checks all buyers have approved.
 }
@@ -171,22 +177,24 @@ uint256 totalBalance = getBalance();  // Gets current balance.
 uint256 totalDeposited = totalEarnestDeposited + lenderDeposited;  // Calculates total principal deposited.
 uint256 yield = totalBalance > totalDeposited ? totalBalance - totalDeposited : 0;  // Calculates yield.
 config.aavePool.withdraw(address(config.usdc), type(uint256).max, address(this));  // Withdraws all from Aave.
-if (inspectionPassed) {  // If inspection passed.
-if (!config.usdc.transfer(config.seller, totalBalance)) revert TransferFailed();  // Forfeits all to seller.
-emit TransactionCancelled(false, totalBalance, config.seller, block.timestamp);  // Emits cancellation event.
-} else {  // If inspection failed.
+bool isSellerBackingOut = (msg.sender == config.seller);
+if (isSellerBackingOut || !inspectionPassed) {  // If seller is backing out or inspection failed, refund to buyers/lender.
+bool inspectionFailedForEvent = !isSellerBackingOut && !inspectionPassed;  // Set event flag: true only if not seller and inspection failed.
 for (uint i = 0; i < buyers.length; i++) {  // Loops through buyers.
 address buyerAddr = buyers[i];  // Gets buyer address.
 uint256 buyerPrincipal = buyerEarnestDeposited[buyerAddr];  // Gets buyer's principal.
 uint256 buyerYield = totalDeposited == 0 ? 0 : (yield * buyerPrincipal) / totalDeposited;  // Calculates buyer's yield share.
 if (!config.usdc.transfer(buyerAddr, buyerPrincipal + buyerYield)) revert TransferFailed();  // Refunds to buyer.
-emit TransactionCancelled(true, buyerPrincipal + buyerYield, buyerAddr, block.timestamp);  // Emits per buyer.
+emit TransactionCancelled(inspectionFailedForEvent, buyerPrincipal + buyerYield, buyerAddr, block.timestamp);  // Emits per buyer.
 }
 if (lenderDeposited > 0) {  // If lender deposited.
 uint256 lenderYield = totalDeposited == 0 ? 0 : (yield * lenderDeposited) / totalDeposited;  // Calculates lender's yield.
 if (!config.usdc.transfer(config.lender, lenderDeposited + lenderYield)) revert TransferFailed();  // Refunds to lender.
-emit TransactionCancelled(true, lenderDeposited + lenderYield, config.lender, block.timestamp);  // Emits for lender.
+emit TransactionCancelled(inspectionFailedForEvent, lenderDeposited + lenderYield, config.lender, block.timestamp);  // Emits for lender.
 }
+} else {  // Otherwise (non-seller caller and inspection passed), forfeit all to seller.
+if (!config.usdc.transfer(config.seller, totalBalance)) revert TransferFailed();  // Forfeits all to seller.
+emit TransactionCancelled(false, totalBalance, config.seller, block.timestamp);  // Emits cancellation event.
 }
 currentPhase = Phase(5, block.timestamp);  // Advances to Cancelled phase.
 }
