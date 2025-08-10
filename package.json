@@ -16,6 +16,8 @@
     "prettier-plugin-solidity": "^2.0.0"
   },
   "dependencies": {
+    "@chainlink/contracts": "^1.4.0",
+    "@layerzerolabs/solidity-examples": "^1.1.0",
     "@openzeppelin/contracts": "^4.9.6",
     "@openzeppelin/contracts-upgradeable": "^4.9.6",
     "@openzeppelin/hardhat-upgrades": "^1.28.0",
