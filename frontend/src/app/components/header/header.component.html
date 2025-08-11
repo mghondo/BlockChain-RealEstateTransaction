@@ -1,0 +1,187 @@
+<mat-toolbar class="header-toolbar glass-card">
+  <div class="toolbar-content">
+    <!-- Logo & Brand -->
+    <div class="brand-section fade-in">
+      <div class="logo-container">
+        <div class="logo-icon">🏛️</div>
+        <h1 class="brand-title crypto-title">FracEstate</h1>
+      </div>
+      <div class="tagline">Blockchain Real Estate</div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <!-- Wallet & Network Section -->
+    <div class="wallet-section slide-up">
+      
+      <!-- Network Selector -->
+      @if (isWalletConnected) {
+        <div class="network-selector" [ngClass]="networkStatusClass">
+          <button mat-button 
+                  [matMenuTriggerFor]="networkMenu" 
+                  class="network-button glass-button"
+                  [matTooltip]="isNetworkSupported ? 'Switch Network' : 'Unsupported Network'">
+            <div class="network-info">
+              <div class="network-indicator" [ngClass]="networkStatusClass"></div>
+              <span class="network-name">{{ currentNetworkName }}</span>
+              <mat-icon>expand_more</mat-icon>
+            </div>
+          </button>
+          
+          <mat-menu #networkMenu="matMenu" class="network-menu">
+            <div class="network-menu-header">
+              <h3>Select Network</h3>
+            </div>
+            
+            <div class="network-group">
+              <div class="network-group-label">Mainnet</div>
+              @for (network of mainnetNetworks; track network.chainId) {
+                <button mat-menu-item 
+                        (click)="switchNetwork(network.chainId)"
+                        [disabled]="currentNetwork?.chainId === network.chainId"
+                        class="network-menu-item">
+                  <div class="network-menu-content">
+                    <div class="network-icon">🌐</div>
+                    <div class="network-details">
+                      <div class="network-name">{{ network.displayName }}</div>
+                      <div class="network-symbol">{{ network.symbol }}</div>
+                    </div>
+                    @if (currentNetwork?.chainId === network.chainId) {
+                      <mat-icon class="current-network-check">check</mat-icon>
+                    }
+                  </div>
+                </button>
+              }
+            </div>
+
+            <div class="network-group">
+              <div class="network-group-label">Testnet</div>
+              @for (network of testnetNetworks; track network.chainId) {
+                <button mat-menu-item 
+                        (click)="switchNetwork(network.chainId)"
+                        [disabled]="currentNetwork?.chainId === network.chainId"
+                        class="network-menu-item testnet">
+                  <div class="network-menu-content">
+                    <div class="network-icon">🧪</div>
+                    <div class="network-details">
+                      <div class="network-name">{{ network.displayName }}</div>
+                      <div class="network-symbol">{{ network.symbol }}</div>
+                    </div>
+                    @if (currentNetwork?.chainId === network.chainId) {
+                      <mat-icon class="current-network-check">check</mat-icon>
+                    }
+                  </div>
+                </button>
+              }
+            </div>
+          </mat-menu>
+        </div>
+      }
+
+      <!-- Balance Display -->
+      @if (isWalletConnected) {
+        <div class="balance-display glass-card">
+          <div class="balance-item">
+            <div class="balance-label">{{ currentNetworkSymbol }}</div>
+            <div class="balance-value">{{ formattedBalance }}</div>
+          </div>
+          <div class="balance-separator"></div>
+          <div class="balance-item">
+            <div class="balance-label">USDC</div>
+            <div class="balance-value">{{ usdcBalance }}</div>
+          </div>
+        </div>
+      }
+
+      <!-- Wallet Connection -->
+      <div class="wallet-connection">
+        @if (!isWalletConnected) {
+          <!-- Connect Wallet Button -->
+          <button mat-raised-button 
+                  color="primary" 
+                  (click)="connectWallet()" 
+                  [disabled]="isConnecting"
+                  class="connect-button glass-button">
+            @if (isConnecting) {
+              <mat-spinner diameter="20" class="spinner"></mat-spinner>
+              <span>Connecting...</span>
+            } @else {
+              <mat-icon>account_balance_wallet</mat-icon>
+              <span>Connect Wallet</span>
+            }
+          </button>
+        } @else {
+          <!-- Connected Wallet Info -->
+          <div class="wallet-info glass-button" [matMenuTriggerFor]="walletMenu">
+            <div class="wallet-avatar">
+              <div class="avatar-circle">
+                {{ formattedAddress.substring(0, 2).toUpperCase() }}
+              </div>
+            </div>
+            <div class="wallet-details">
+              <div class="wallet-address">{{ formattedAddress }}</div>
+              <div class="wallet-status" [ngClass]="networkStatusClass">
+                @if (isNetworkSupported) {
+                  <span>Connected</span>
+                } @else {
+                  <span>Wrong Network</span>
+                }
+              </div>
+            </div>
+            <mat-icon class="dropdown-icon">expand_more</mat-icon>
+          </div>
+
+          <mat-menu #walletMenu="matMenu" class="wallet-menu">
+            <div class="wallet-menu-header">
+              <div class="wallet-address-full">{{ walletState?.account }}</div>
+            </div>
+            
+            <button mat-menu-item (click)="copyAddress()" class="wallet-menu-item">
+              <mat-icon>content_copy</mat-icon>
+              <span>Copy Address</span>
+            </button>
+            
+            <button mat-menu-item (click)="openNetworkExplorer()" class="wallet-menu-item">
+              <mat-icon>open_in_new</mat-icon>
+              <span>View on Explorer</span>
+            </button>
+            
+            <mat-divider></mat-divider>
+            
+            <button mat-menu-item (click)="disconnectWallet()" class="wallet-menu-item disconnect">
+              <mat-icon>power_settings_new</mat-icon>
+              <span>Disconnect</span>
+            </button>
+          </mat-menu>
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Banner -->
+  @if (walletState?.error) {
+    <div class="error-banner slide-up">
+      <mat-icon class="error-icon">error</mat-icon>
+      <span class="error-message">{{ walletState?.error }}</span>
+      <button mat-icon-button (click)="walletState && (walletState.error = null)" class="close-error">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  }
+
+  <!-- Unsupported Network Warning -->
+  @if (isWalletConnected && !isNetworkSupported) {
+    <div class="warning-banner slide-up">
+      <mat-icon class="warning-icon">warning</mat-icon>
+      <span class="warning-message">
+        Please switch to a supported network: {{ mainnetNetworkNames }}
+      </span>
+      <button mat-raised-button 
+              color="accent" 
+              (click)="switchNetwork(1)"
+              class="switch-network-btn">
+        Switch to Ethereum
+      </button>
+    </div>
+  }
+</mat-toolbar>

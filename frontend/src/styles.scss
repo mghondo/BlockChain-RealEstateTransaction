@@ -1,0 +1,206 @@
+// Angular Material Theme
+@use '@angular/material' as mat;
+
+// Define custom color palette for crypto theme
+$fracEstate-primary: mat.define-palette((
+  50: #e8f4ff,
+  100: #c5e4ff,
+  200: #9ed2ff,
+  300: #76c0ff,
+  400: #57b2ff,
+  500: #38a3ff,
+  600: #329bff,
+  700: #2b91ff,
+  800: #2488ff,
+  900: #1976ff,
+  A100: #ffffff,
+  A200: #f0f8ff,
+  A400: #bdddff,
+  A700: #a4d1ff,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+    A100: rgba(0, 0, 0, 0.87),
+    A200: rgba(0, 0, 0, 0.87),
+    A400: rgba(0, 0, 0, 0.87),
+    A700: rgba(0, 0, 0, 0.87),
+  )
+));
+
+$fracEstate-accent: mat.define-palette((
+  50: #fff3e0,
+  100: #ffe0b3,
+  200: #ffcc80,
+  300: #ffb74d,
+  400: #ffa726,
+  500: #ff9800,
+  600: #fb8c00,
+  700: #f57c00,
+  800: #ef6c00,
+  900: #e65100,
+  A100: #ffd54f,
+  A200: #ffcc02,
+  A400: #ffab00,
+  A700: #ff6f00,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: rgba(0, 0, 0, 0.87),
+    600: rgba(0, 0, 0, 0.87),
+    700: rgba(0, 0, 0, 0.87),
+    800: white,
+    900: white,
+    A100: rgba(0, 0, 0, 0.87),
+    A200: rgba(0, 0, 0, 0.87),
+    A400: rgba(0, 0, 0, 0.87),
+    A700: rgba(0, 0, 0, 0.87),
+  )
+));
+
+$fracEstate-warn: mat.define-palette(mat.$red-palette);
+
+// Define the dark theme
+$fracEstate-theme: mat.define-dark-theme((
+  color: (
+    primary: $fracEstate-primary,
+    accent: $fracEstate-accent,
+    warn: $fracEstate-warn,
+  ),
+  typography: mat.define-typography-config(),
+  density: 0,
+));
+
+// Include the common styles for Angular Material
+@include mat.core();
+
+// Include theme styles for all components
+@include mat.all-component-themes($fracEstate-theme);
+
+// Global styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', 'Roboto', sans-serif;
+  background: linear-gradient(135deg, #0c0c0f 0%, #1a1a2e 35%, #16213e 100%);
+  color: #ffffff;
+  overflow-x: hidden;
+}
+
+// Custom CSS Variables for crypto theme
+:root {
+  --primary-gradient: linear-gradient(135deg, #38a3ff 0%, #1976ff 100%);
+  --secondary-gradient: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  --background-dark: #0c0c0f;
+  --background-darker: #08080b;
+  --surface-dark: rgba(255, 255, 255, 0.05);
+  --surface-light: rgba(255, 255, 255, 0.1);
+  --border-color: rgba(255, 255, 255, 0.12);
+  --text-primary: #ffffff;
+  --text-secondary: rgba(255, 255, 255, 0.7);
+  --text-disabled: rgba(255, 255, 255, 0.38);
+  --success-color: #4caf50;
+  --warning-color: #ff9800;
+  --error-color: #f44336;
+  
+  // Glassmorphism variables
+  --glass-background: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  --glass-backdrop-filter: blur(12px);
+}
+
+// Glassmorphism utility classes
+.glass-card {
+  background: var(--glass-background);
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border-radius: 16px;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-button {
+  background: var(--glass-background);
+  backdrop-filter: var(--glass-backdrop-filter);
+  -webkit-backdrop-filter: var(--glass-backdrop-filter);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px 0 rgba(31, 38, 135, 0.5);
+  }
+}
+
+// Animation utilities
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up {
+  animation: slideUp 0.4s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+// Typography enhancements
+.crypto-title {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+// Custom scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-darker);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--surface-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+// Responsive breakpoints
+@media (max-width: 768px) {
+  html, body {
+    font-size: 14px;
+  }
+}
