@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, throwError, from, of } from 'rxjs';
-import { catchError, switchMap } from 'rxjs/operators';
+import { catchError, switchMap, map } from 'rxjs/operators';
 import { ethers } from 'ethers';
 
 export interface WalletState {
@@ -42,6 +42,9 @@ export class WalletService {
   });
 
   public readonly walletState$ = this._walletState.asObservable();
+  public readonly accountChanged$ = this._walletState.pipe(
+    map(state => state.account)
+  );
   private provider: ethers.BrowserProvider | null = null;
 
   constructor() {

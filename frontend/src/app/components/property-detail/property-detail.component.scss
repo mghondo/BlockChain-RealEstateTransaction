@@ -1,0 +1,602 @@
+.property-detail-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.back-navigation {
+  margin-bottom: 24px;
+
+  .back-btn {
+    color: #666;
+    border-radius: 8px;
+    
+    mat-icon {
+      margin-right: 8px;
+    }
+
+    &:hover {
+      background-color: #f5f5f5;
+    }
+  }
+}
+
+.property-header {
+  margin-bottom: 32px;
+
+  .header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 32px;
+
+    .title-section {
+      flex-grow: 1;
+
+      h1 {
+        margin: 0 0 16px 0;
+        font-size: 2.5rem;
+        font-weight: 600;
+        color: #2c3e50;
+        line-height: 1.2;
+      }
+
+      .status-chip {
+        mat-chip {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-weight: 500;
+          font-size: 0.9rem;
+          padding: 8px 16px;
+          border-radius: 20px;
+
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+
+          &.status-initialization {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+          }
+
+          &.status-inspection {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #74c0fc;
+          }
+
+          &.status-approval {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #51cf66;
+          }
+
+          &.status-funding {
+            background-color: #cce5ff;
+            color: #004085;
+            border: 1px solid #339af0;
+          }
+
+          &.status-completed {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #28a745;
+          }
+
+          &.status-cancelled {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #dc3545;
+          }
+        }
+      }
+    }
+
+    .key-metrics {
+      display: flex;
+      gap: 32px;
+
+      .metric {
+        text-align: right;
+
+        .metric-value {
+          display: block;
+          font-size: 1.75rem;
+          font-weight: 700;
+          color: #27ae60;
+          margin-bottom: 4px;
+        }
+
+        .metric-label {
+          font-size: 0.9rem;
+          color: #7f8c8d;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          font-weight: 500;
+        }
+      }
+    }
+  }
+}
+
+.main-content {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
+
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.image-gallery {
+  overflow: hidden;
+  border-radius: 12px;
+
+  .main-image {
+    height: 400px;
+    overflow: hidden;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+
+      &:hover {
+        transform: scale(1.02);
+      }
+    }
+  }
+}
+
+.description-card,
+.contract-details {
+  .attributes-section {
+    margin-top: 24px;
+
+    h4 {
+      margin: 0 0 16px 0;
+      color: #2c3e50;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .attributes-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .attribute-chip {
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        border-radius: 16px;
+        background-color: #e8f4fd;
+        color: #1976d2;
+        border: 1px solid #bbdefb;
+      }
+    }
+  }
+
+  .contract-info {
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #ecf0f1;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      .label {
+        font-weight: 500;
+        color: #2c3e50;
+      }
+
+      .value {
+        font-family: 'Courier New', monospace;
+        font-size: 0.85rem;
+        color: #7f8c8d;
+        word-break: break-all;
+      }
+    }
+  }
+}
+
+.right-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.investment-card {
+  .funding-progress {
+    margin-bottom: 24px;
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #2c3e50;
+    }
+
+    .funding-bar {
+      height: 12px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+
+      ::ng-deep .mat-progress-bar-fill::after {
+        background: linear-gradient(90deg, #3498db, #2ecc71);
+      }
+    }
+
+    .funding-details {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #7f8c8d;
+    }
+  }
+
+  .user-investment {
+    margin-bottom: 24px;
+    padding: 20px;
+    background-color: #f8f9fa;
+    border-radius: 12px;
+
+    h4 {
+      margin: 0 0 16px 0;
+      color: #2c3e50;
+    }
+
+    .investment-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+
+      .stat {
+        text-align: center;
+
+        .stat-value {
+          display: block;
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #27ae60;
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
+          font-size: 0.8rem;
+          color: #7f8c8d;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+      }
+    }
+  }
+
+  .investment-form,
+  .role-actions {
+    margin-bottom: 24px;
+
+    h4 {
+      margin: 0 0 16px 0;
+      color: #2c3e50;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .shares-input {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .invest-btn,
+    button {
+      width: 100%;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      font-weight: 500;
+      
+      mat-icon {
+        margin-right: 8px;
+      }
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    .inspector-actions,
+    .approval-actions,
+    .finalization-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+  }
+
+  .timelock-status {
+    margin-bottom: 24px;
+    padding: 20px;
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 12px;
+
+    h4 {
+      margin: 0 0 16px 0;
+      color: #856404;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
+
+    .timelock-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      color: #856404;
+      font-weight: 500;
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+
+    mat-progress-bar {
+      height: 8px;
+      border-radius: 4px;
+
+      ::ng-deep .mat-progress-bar-fill::after {
+        background: linear-gradient(90deg, #f39c12, #e67e22);
+      }
+    }
+  }
+}
+
+.history-card {
+  .activity-list {
+    .activity-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 16px 0;
+      border-bottom: 1px solid #ecf0f1;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      mat-icon {
+        margin-top: 2px;
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: #7f8c8d;
+
+        &.investment {
+          color: #27ae60;
+        }
+
+        &.inspection {
+          color: #3498db;
+        }
+
+        &.approval {
+          color: #2ecc71;
+        }
+
+        &.finalization {
+          color: #9b59b6;
+        }
+
+        &.cancellation {
+          color: #e74c3c;
+        }
+      }
+
+      .activity-content {
+        flex-grow: 1;
+
+        .activity-text {
+          display: block;
+          margin-bottom: 4px;
+          font-weight: 500;
+          color: #2c3e50;
+        }
+
+        .activity-time {
+          font-size: 0.8rem;
+          color: #7f8c8d;
+        }
+      }
+    }
+
+    .no-activity {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      color: #bdc3c7;
+      text-align: center;
+
+      mat-icon {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+        margin-bottom: 12px;
+      }
+    }
+  }
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 20px;
+  text-align: center;
+
+  p {
+    margin-top: 16px;
+    color: #7f8c8d;
+    font-size: 1.1rem;
+  }
+}
+
+// Responsive design
+@media (max-width: 1024px) {
+  .main-content {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .property-header .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+
+    .key-metrics {
+      width: 100%;
+      justify-content: space-between;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .property-detail-container {
+    padding: 16px;
+  }
+
+  .property-header .header-content {
+    .title-section h1 {
+      font-size: 1.75rem;
+    }
+
+    .key-metrics {
+      flex-direction: column;
+      gap: 16px;
+
+      .metric {
+        text-align: left;
+
+        .metric-value {
+          font-size: 1.5rem;
+        }
+      }
+    }
+  }
+
+  .image-gallery .main-image {
+    height: 250px;
+  }
+
+  .user-investment .investment-stats {
+    grid-template-columns: 1fr;
+    gap: 12px;
+
+    .stat {
+      text-align: left;
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .property-detail-container {
+    padding: 12px;
+  }
+
+  .property-header .header-content .key-metrics .metric {
+    .metric-value {
+      font-size: 1.25rem;
+    }
+
+    .metric-label {
+      font-size: 0.8rem;
+    }
+  }
+
+  .contract-details .contract-info .info-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+
+    .value {
+      font-size: 0.8rem;
+    }
+  }
+}
+
+// Dark theme support
+@media (prefers-color-scheme: dark) {
+  .property-header {
+    .header-content {
+      .title-section h1 {
+        color: #e2e8f0;
+      }
+
+      .key-metrics .metric {
+        .metric-value {
+          color: #48bb78;
+        }
+
+        .metric-label {
+          color: #a0aec0;
+        }
+      }
+    }
+  }
+
+  .description-card,
+  .contract-details,
+  .investment-card,
+  .history-card {
+    background-color: #2d3748;
+    color: #e2e8f0;
+
+    ::ng-deep mat-card-title {
+      color: #e2e8f0;
+    }
+
+    .contract-info .info-row {
+      border-color: #4a5568;
+
+      .label {
+        color: #e2e8f0;
+      }
+
+      .value {
+        color: #a0aec0;
+      }
+    }
+
+    .activity-item {
+      border-color: #4a5568;
+
+      .activity-content .activity-text {
+        color: #e2e8f0;
+      }
+    }
+  }
+
+  .user-investment {
+    background-color: #4a5568;
+  }
+
+  .back-navigation .back-btn:hover {
+    background-color: #4a5568;
+  }
+}

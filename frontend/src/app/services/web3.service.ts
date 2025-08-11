@@ -86,6 +86,19 @@ export class Web3Service {
     this.initializeService();
   }
 
+  // Provider methods
+  async getProvider(): Promise<ethers.BrowserProvider> {
+    const provider = this.walletService.getProvider();
+    if (!provider) {
+      throw new Error('Provider not available');
+    }
+    return provider;
+  }
+
+  async getSigner(): Promise<ethers.JsonRpcSigner | null> {
+    return this.walletService.getSigner();
+  }
+
   private initializeService(): void {
     // Listen to wallet state changes
     this.walletService.walletState$.subscribe(state => {

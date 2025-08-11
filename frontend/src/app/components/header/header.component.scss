@@ -66,6 +66,59 @@
       display: none;
     }
   }
+
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+// Navigation Menu
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 32px;
+
+  @media (max-width: 768px) {
+    margin-left: 16px;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    text-transform: none;
+    font-weight: 500;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+      color: var(--primary-color);
+    }
+
+    &.active-link {
+      background-color: rgba(56, 163, 255, 0.1);
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+
+    @media (max-width: 640px) {
+      padding: 8px 12px;
+      
+      span {
+        display: none;
+      }
+    }
+  }
 }
 
 // Spacer
