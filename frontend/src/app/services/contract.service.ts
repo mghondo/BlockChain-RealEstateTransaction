@@ -197,7 +197,7 @@ export class ContractService {
 
   async depositEarnest(escrowAddress: string, amount: bigint): Promise<Observable<any>> {
     const signer = await this.web3Service.getSigner();
-    const escrowContract = this.getEscrowContract(escrowAddress);
+    const escrowContract = await this.getEscrowContract(escrowAddress);
     
     if (!signer || !escrowContract) {
       throw new Error('Signer or contract not available');
@@ -209,7 +209,7 @@ export class ContractService {
 
   async approveRole(escrowAddress: string, role: string): Promise<Observable<any>> {
     const signer = await this.web3Service.getSigner();
-    const escrowContract = this.getEscrowContract(escrowAddress);
+    const escrowContract = await this.getEscrowContract(escrowAddress);
     
     if (!signer || !escrowContract) {
       throw new Error('Signer or contract not available');
@@ -221,7 +221,7 @@ export class ContractService {
 
   async updateInspection(escrowAddress: string, passed: boolean): Promise<Observable<any>> {
     const signer = await this.web3Service.getSigner();
-    const escrowContract = this.getEscrowContract(escrowAddress);
+    const escrowContract = await this.getEscrowContract(escrowAddress);
     
     if (!signer || !escrowContract) {
       throw new Error('Signer or contract not available');
@@ -233,7 +233,7 @@ export class ContractService {
 
   async finalizeSale(escrowAddress: string): Promise<Observable<any>> {
     const signer = await this.web3Service.getSigner();
-    const escrowContract = this.getEscrowContract(escrowAddress);
+    const escrowContract = await this.getEscrowContract(escrowAddress);
     
     if (!signer || !escrowContract) {
       throw new Error('Signer or contract not available');
@@ -245,7 +245,7 @@ export class ContractService {
 
   async cancelSale(escrowAddress: string): Promise<Observable<any>> {
     const signer = await this.web3Service.getSigner();
-    const escrowContract = this.getEscrowContract(escrowAddress);
+    const escrowContract = await this.getEscrowContract(escrowAddress);
     
     if (!signer || !escrowContract) {
       throw new Error('Signer or contract not available');

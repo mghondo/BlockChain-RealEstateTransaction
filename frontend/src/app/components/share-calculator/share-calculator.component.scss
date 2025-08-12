@@ -1,0 +1,428 @@
+.calculator-card {
+  max-width: 1000px;
+  margin: 20px auto;
+  
+  .mat-card-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin: -24px -24px 24px -24px;
+    padding: 24px;
+    border-radius: 4px 4px 0 0;
+    
+    .mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .mat-card-subtitle {
+      margin: 8px 0 0 0;
+      opacity: 0.9;
+    }
+  }
+}
+
+.calculator-content {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.property-overview {
+  .property-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+    
+    h3 {
+      margin: 0 0 12px 0;
+      color: #2c3e50;
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+    
+    .property-details {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      
+      .price {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #27ae60;
+      }
+      
+      .available {
+        color: #7f8c8d;
+        font-size: 0.95rem;
+      }
+    }
+  }
+}
+
+.share-selection {
+  h4 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-weight: 600;
+  }
+  
+  .input-methods {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+    
+    .input-method {
+      padding: 20px;
+      border: 2px solid #e9ecef;
+      border-radius: 8px;
+      transition: all 0.3s ease;
+      
+      &.active {
+        border-color: #667eea;
+        background: #f8f9ff;
+      }
+      
+      label {
+        display: block;
+        margin-bottom: 12px;
+        font-weight: 500;
+        color: #2c3e50;
+      }
+      
+      .mat-form-field {
+        width: 100%;
+      }
+    }
+  }
+  
+  .slider-container {
+    .percentage-slider {
+      width: 100%;
+      margin: 20px 0;
+    }
+    
+    .slider-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #7f8c8d;
+      margin-top: 8px;
+    }
+  }
+}
+
+.calculation-results {
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    
+    .result-card {
+      border: 1px solid #e9ecef;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+      }
+      
+      .result-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        padding: 16px 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        
+        mat-icon {
+          color: #667eea;
+        }
+        
+        h4 {
+          margin: 0;
+          font-size: 1rem;
+          font-weight: 600;
+          color: #2c3e50;
+        }
+      }
+      
+      .result-content {
+        padding: 20px;
+        
+        .metric {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 8px 0;
+          border-bottom: 1px solid #f1f3f4;
+          
+          &:last-child {
+            border-bottom: none;
+          }
+          
+          &.total {
+            border-top: 2px solid #e9ecef;
+            margin-top: 8px;
+            padding-top: 12px;
+            font-weight: 600;
+          }
+          
+          .label {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+          }
+          
+          .value {
+            font-weight: 500;
+            color: #2c3e50;
+            
+            &.loading {
+              display: flex;
+              align-items: center;
+              gap: 8px;
+            }
+          }
+        }
+      }
+      
+      &.investment {
+        border-left: 4px solid #3498db;
+      }
+      
+      &.returns {
+        border-left: 4px solid #27ae60;
+      }
+      
+      &.ownership {
+        border-left: 4px solid #f39c12;
+      }
+      
+      &.fees {
+        border-left: 4px solid #e74c3c;
+      }
+    }
+  }
+}
+
+.investment-methods {
+  h4 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-weight: 600;
+  }
+  
+  .method-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    
+    .method-card {
+      border: 2px solid #e9ecef;
+      border-radius: 12px;
+      padding: 24px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      
+      &:hover {
+        border-color: #667eea;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(102, 126, 234, 0.1);
+      }
+      
+      &.selected {
+        border-color: #667eea;
+        background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
+      }
+      
+      .method-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        
+        h5 {
+          margin: 0;
+          color: #2c3e50;
+          font-size: 1.1rem;
+          font-weight: 600;
+        }
+        
+        .time-estimate {
+          background: #667eea;
+          color: white;
+          padding: 4px 8px;
+          border-radius: 12px;
+          font-size: 0.8rem;
+          font-weight: 500;
+        }
+      }
+      
+      .method-description {
+        color: #7f8c8d;
+        margin: 0 0 16px 0;
+        line-height: 1.5;
+      }
+      
+      .method-advantages {
+        margin-bottom: 16px;
+        
+        .advantage {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 6px;
+          
+          mat-icon {
+            color: #27ae60;
+            font-size: 1rem;
+            width: 16px;
+            height: 16px;
+          }
+          
+          span {
+            font-size: 0.9rem;
+            color: #2c3e50;
+          }
+        }
+      }
+      
+      .gas-estimate {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: #f8f9fa;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        color: #7f8c8d;
+        
+        mat-icon {
+          font-size: 1rem;
+          width: 16px;
+          height: 16px;
+        }
+      }
+    }
+  }
+}
+
+.action-buttons {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  flex-wrap: wrap;
+  
+  button {
+    padding: 12px 32px;
+    font-size: 1rem;
+    font-weight: 500;
+    
+    mat-icon {
+      margin-right: 8px;
+    }
+  }
+}
+
+.investment-summary {
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8ecff 100%);
+  border: 2px solid #667eea;
+  border-radius: 12px;
+  padding: 24px;
+  
+  .summary-content {
+    h4 {
+      margin: 0 0 20px 0;
+      color: #2c3e50;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      
+      &::before {
+        content: '📊';
+        font-size: 1.2em;
+      }
+    }
+    
+    .summary-details {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      
+      .summary-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 16px;
+        background: white;
+        border-radius: 8px;
+        border-left: 4px solid #667eea;
+        
+        &:first-child span:first-child {
+          font-weight: 500;
+        }
+        
+        .total-cost {
+          font-weight: 600;
+          color: #e74c3c;
+          font-size: 1.1rem;
+        }
+      }
+    }
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .calculator-card {
+    margin: 10px;
+  }
+  
+  .input-methods {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .result-grid {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .method-cards {
+    grid-template-columns: 1fr !important;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    align-items: stretch;
+    
+    button {
+      width: 100%;
+    }
+  }
+  
+  .summary-details {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .property-details {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+  
+  .method-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+}

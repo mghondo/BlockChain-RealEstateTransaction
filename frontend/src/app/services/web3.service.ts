@@ -378,4 +378,29 @@ export class Web3Service {
 
     return await provider.getBlockNumber();
   }
+
+  // Get current account
+  public async getAccount(): Promise<string | null> {
+    return this.walletService.currentState.account;
+  }
+
+  // Switch network
+  public async switchNetwork(chainId: number): Promise<boolean> {
+    try {
+      const signer = await this.walletService.getSigner();
+      if (!signer || !signer.provider || !('send' in signer.provider)) {
+        return false;
+      }
+
+      await signer.provider.send('wallet_switchEthereumChain', [
+        { chainId: `0x${chainId.toString(16)}` }
+      ]);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to switch network:', error);
+      return false;
+    }
+  }
+
 }

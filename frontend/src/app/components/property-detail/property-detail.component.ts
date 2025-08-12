@@ -194,28 +194,59 @@ import { WalletService } from '../../services/wallet.service';
                 </div>
               </div>
 
-              <!-- Investment Form -->
-              <div class="investment-form" *ngIf="canInvest()">
+              <!-- Investment Options -->
+              <div class="investment-options" *ngIf="canInvest()">
                 <h4>Invest in This Property</h4>
-                <mat-form-field appearance="outline" class="shares-input">
-                  <mat-label>Number of Shares</mat-label>
-                  <input matInput 
-                         type="number" 
-                         [(ngModel)]="investmentShares"
-                         [min]="1" 
-                         [max]="property.availableShares"
-                         placeholder="Enter shares to purchase">
-                  <mat-hint>{{ getInvestmentAmount() }} total</mat-hint>
-                </mat-form-field>
+                
+                <!-- Quick Investment Form -->
+                <div class="quick-invest">
+                  <mat-form-field appearance="outline" class="shares-input">
+                    <mat-label>Number of Shares</mat-label>
+                    <input matInput 
+                           type="number" 
+                           [(ngModel)]="investmentShares"
+                           [min]="1" 
+                           [max]="property.availableShares"
+                           placeholder="Enter shares to purchase">
+                    <mat-hint>{{ getInvestmentAmount() }} total</mat-hint>
+                  </mat-form-field>
 
-                <button mat-raised-button 
-                        color="primary" 
-                        [disabled]="!canSubmitInvestment()"
-                        (click)="investInProperty()"
-                        class="invest-btn">
-                  <mat-icon>account_balance_wallet</mat-icon>
-                  Invest {{ getInvestmentAmount() }}
-                </button>
+                  <div class="investment-buttons">
+                    <button mat-raised-button 
+                            color="primary" 
+                            [disabled]="!canSubmitInvestment()"
+                            (click)="startInvestmentWizard()"
+                            class="invest-wizard-btn">
+                      <mat-icon>trending_up</mat-icon>
+                      Start Investment Wizard
+                    </button>
+                    
+                    <button mat-stroked-button 
+                            color="primary" 
+                            [disabled]="!canSubmitInvestment()"
+                            (click)="investInProperty()"
+                            class="quick-invest-btn">
+                      <mat-icon>account_balance_wallet</mat-icon>
+                      Quick Invest {{ getInvestmentAmount() }}
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Investment Benefits -->
+                <div class="investment-benefits">
+                  <div class="benefit-item">
+                    <mat-icon>calculate</mat-icon>
+                    <span>Use Investment Wizard for detailed calculations and cross-chain options</span>
+                  </div>
+                  <div class="benefit-item">
+                    <mat-icon>swap_horiz</mat-icon>
+                    <span>Bridge USDC from Polygon for lower gas fees</span>
+                  </div>
+                  <div class="benefit-item">
+                    <mat-icon>timeline</mat-icon>
+                    <span>Real-time transaction tracking and status updates</span>
+                  </div>
+                </div>
               </div>
 
               <!-- Action Buttons for Different Roles -->
@@ -420,6 +451,18 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
   }
 
   // Investment methods
+  startInvestmentWizard() {
+    if (!this.canSubmitInvestment() || !this.property) return;
+    
+    // Navigate to investment wizard with property address
+    this.router.navigate(['/invest', this.escrowAddress], {
+      queryParams: {
+        shares: this.investmentShares,
+        amount: this.getInvestmentAmount().replace('$', '').replace(',', '')
+      }
+    });
+  }
+
   async investInProperty() {
     if (!this.canSubmitInvestment() || !this.property) return;
 
