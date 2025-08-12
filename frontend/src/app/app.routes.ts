@@ -3,8 +3,23 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/properties',
+    redirectTo: '/dashboard',
     pathMatch: 'full'
+  },
+  {
+    path: 'dashboard',
+    loadComponent: () => import('./components/escrow-dashboard/escrow-dashboard.component')
+      .then(m => m.EscrowDashboardComponent)
+  },
+  {
+    path: 'escrow/:address',
+    loadComponent: () => import('./components/escrow-detail/escrow-detail.component')
+      .then(m => m.EscrowDetailComponent)
+  },
+  {
+    path: 'escrow/:address/actions',
+    loadComponent: () => import('./components/escrow-detail/escrow-detail.component')
+      .then(m => m.EscrowDetailComponent) // Same component, could add query param for focus on actions
   },
   {
     path: 'properties',
@@ -38,6 +53,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: '/properties'
+    redirectTo: '/dashboard'
   }
 ];

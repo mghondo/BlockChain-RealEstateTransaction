@@ -469,15 +469,15 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
     try {
       const amount = BigInt(this.investmentShares) * this.property.config.escrowAmount / BigInt(100);
       
-      const investment$ = await this.contractService.depositEarnest(this.escrowAddress, amount);
+      const investment$ = await this.contractService.depositEarnest(this.escrowAddress, Number(amount));
       
       investment$.pipe(takeUntil(this.destroy$)).subscribe({
-        next: (tx) => {
+        next: (tx: any) => {
           this.snackBar.open('Investment transaction submitted!', 'Close', { duration: 5000 });
           // Reload property details after successful investment
           setTimeout(() => this.loadPropertyDetails(), 2000);
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Investment failed:', error);
           this.snackBar.open('Investment failed. Please try again.', 'Close', { duration: 5000 });
         }
@@ -499,7 +499,7 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
           this.snackBar.open(`Inspection ${passed ? 'passed' : 'failed'} successfully!`, 'Close', { duration: 5000 });
           this.loadPropertyDetails();
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Failed to update inspection:', error);
           this.snackBar.open('Failed to update inspection status', 'Close', { duration: 5000 });
         }
@@ -521,7 +521,7 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
           this.snackBar.open('Transaction approved successfully!', 'Close', { duration: 5000 });
           this.loadPropertyDetails();
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Failed to approve transaction:', error);
           this.snackBar.open('Failed to approve transaction', 'Close', { duration: 5000 });
         }
@@ -540,7 +540,7 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
           this.snackBar.open('Sale finalized successfully!', 'Close', { duration: 5000 });
           this.loadPropertyDetails();
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Failed to finalize sale:', error);
           this.snackBar.open('Failed to finalize sale', 'Close', { duration: 5000 });
         }
@@ -559,7 +559,7 @@ export class PropertyDetailComponent implements OnInit, OnDestroy {
           this.snackBar.open('Sale cancelled successfully!', 'Close', { duration: 5000 });
           this.loadPropertyDetails();
         },
-        error: (error) => {
+        error: (error: any) => {
           console.error('Failed to cancel sale:', error);
           this.snackBar.open('Failed to cancel sale', 'Close', { duration: 5000 });
         }

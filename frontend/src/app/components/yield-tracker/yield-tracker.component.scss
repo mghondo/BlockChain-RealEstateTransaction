@@ -1,0 +1,441 @@
+.yield-tracker {
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.tracker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h3 {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .last-update {
+    font-size: 0.75rem;
+    color: #64748b;
+  }
+}
+
+.yield-summary {
+  .summary-cards {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
+
+    .yield-card {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid;
+
+      &.primary {
+        background: linear-gradient(145deg, #eff6ff, #dbeafe);
+        border-color: #bfdbfe;
+
+        .card-icon {
+          color: #3b82f6;
+        }
+      }
+
+      &.success {
+        background: linear-gradient(145deg, #f0fdf4, #dcfce7);
+        border-color: #bbf7d0;
+
+        .card-icon {
+          color: #10b981;
+        }
+      }
+
+      &.info {
+        background: linear-gradient(145deg, #f0f9ff, #e0f2fe);
+        border-color: #bae6fd;
+
+        .card-icon {
+          color: #0ea5e9;
+        }
+      }
+
+      &.warning {
+        background: linear-gradient(145deg, #fffbeb, #fef3c7);
+        border-color: #fde68a;
+
+        .card-icon {
+          color: #f59e0b;
+        }
+      }
+
+      .card-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+      }
+
+      .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .card-label {
+          font-size: 0.75rem;
+          color: #64748b;
+          font-weight: 500;
+        }
+
+        .card-value {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #1e293b;
+        }
+      }
+    }
+  }
+
+  .yield-breakdown {
+    margin-bottom: 24px;
+
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .breakdown-chart {
+      .chart-bar {
+        display: flex;
+        height: 24px;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 12px;
+        border: 1px solid #e2e8f0;
+
+        .bar-segment {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          font-weight: 500;
+          transition: all 0.3s;
+
+          &.principal {
+            background: linear-gradient(90deg, #3b82f6, #2563eb);
+            color: white;
+          }
+
+          &.yield {
+            background: linear-gradient(90deg, #10b981, #059669);
+            color: white;
+          }
+
+          .segment-label {
+            white-space: nowrap;
+          }
+        }
+      }
+
+      .chart-legend {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.875rem;
+          color: #64748b;
+
+          .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+
+            &.principal {
+              background: #3b82f6;
+            }
+
+            &.yield {
+              background: #10b981;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  .yield-projections {
+    h4 {
+      margin: 0 0 12px 0;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .projections-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+
+      .projection-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 12px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+
+        .projection-period {
+          font-size: 0.875rem;
+          color: #64748b;
+        }
+
+        .projection-amount {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #059669;
+        }
+      }
+    }
+  }
+}
+
+.yield-history {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+
+  h4 {
+    margin: 0 0 16px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .history-chart {
+    .chart-container {
+      position: relative;
+      height: 100px;
+      margin-bottom: 8px;
+      background: linear-gradient(to bottom, #f8fafc, #ffffff);
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+
+      .history-point {
+        position: absolute;
+        transform: translate(-50%, 50%);
+
+        .point-marker {
+          width: 6px;
+          height: 6px;
+          background: #3b82f6;
+          border: 2px solid white;
+          border-radius: 50%;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+      }
+
+      .history-line {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+      }
+    }
+
+    .chart-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #64748b;
+    }
+  }
+}
+
+.yield-events {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+
+  h4 {
+    margin: 0 0 12px 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+  }
+
+  .events-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    .event-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 6px;
+
+      .event-icon {
+        font-size: 1.125rem;
+        flex-shrink: 0;
+      }
+
+      .event-content {
+        flex: 1;
+
+        .event-title {
+          font-size: 0.875rem;
+          font-weight: 500;
+          color: #1e293b;
+        }
+
+        .event-time {
+          font-size: 0.75rem;
+          color: #64748b;
+        }
+      }
+
+      .event-amount {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #059669;
+      }
+    }
+  }
+}
+
+.loading-state,
+.error-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.loading-state {
+  gap: 12px;
+
+  .loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #e5e7eb;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
+.error-state {
+  flex-direction: column;
+  gap: 12px;
+
+  .error-icon {
+    font-size: 2rem;
+  }
+
+  .error-content {
+    .error-title {
+      font-weight: 600;
+      color: #dc2626;
+      margin-bottom: 4px;
+    }
+
+    .error-message {
+      font-size: 0.875rem;
+      margin-bottom: 12px;
+    }
+
+    .retry-btn {
+      padding: 6px 12px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+
+      &:hover {
+        background: #2563eb;
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@media (max-width: 768px) {
+  .yield-summary {
+    .summary-cards {
+      grid-template-columns: 1fr;
+      gap: 8px;
+
+      .yield-card {
+        padding: 12px;
+
+        .card-content {
+          .card-value {
+            font-size: 0.875rem;
+          }
+        }
+      }
+    }
+
+    .yield-projections {
+      .projections-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  }
+
+  .yield-history {
+    .history-chart {
+      .chart-container {
+        height: 80px;
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .yield-summary {
+    .yield-breakdown {
+      .chart-legend {
+        flex-direction: column;
+        gap: 8px;
+      }
+    }
+  }
+
+  .yield-events {
+    .events-list {
+      .event-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+
+        .event-amount {
+          align-self: flex-end;
+        }
+      }
+    }
+  }
+}

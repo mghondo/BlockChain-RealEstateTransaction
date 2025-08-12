@@ -12,11 +12,25 @@
     <!-- Navigation Menu -->
     <nav class="nav-menu">
       <a mat-button 
+         routerLink="/dashboard" 
+         routerLinkActive="active-link"
+         class="nav-link">
+        <mat-icon>dashboard</mat-icon>
+        Dashboard
+      </a>
+      <a mat-button 
          routerLink="/properties" 
          routerLinkActive="active-link"
          class="nav-link">
         <mat-icon>home</mat-icon>
         Properties
+      </a>
+      <a mat-button 
+         routerLink="/bridge" 
+         routerLinkActive="active-link"
+         class="nav-link">
+        <mat-icon>swap_horiz</mat-icon>
+        Bridge
       </a>
     </nav>
 

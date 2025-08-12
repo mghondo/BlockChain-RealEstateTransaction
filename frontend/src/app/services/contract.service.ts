@@ -195,18 +195,6 @@ export class ContractService {
     }
   }
 
-  async depositEarnest(escrowAddress: string, amount: bigint): Promise<Observable<any>> {
-    const signer = await this.web3Service.getSigner();
-    const escrowContract = await this.getEscrowContract(escrowAddress);
-    
-    if (!signer || !escrowContract) {
-      throw new Error('Signer or contract not available');
-    }
-
-    const contractWithSigner = escrowContract.connect(signer);
-    return from((contractWithSigner as any).depositEarnest(amount));
-  }
-
   async approveRole(escrowAddress: string, role: string): Promise<Observable<any>> {
     const signer = await this.web3Service.getSigner();
     const escrowContract = await this.getEscrowContract(escrowAddress);
@@ -229,30 +217,6 @@ export class ContractService {
 
     const contractWithSigner = escrowContract.connect(signer);
     return from((contractWithSigner as any).updateInspectionStatus(passed));
-  }
-
-  async finalizeSale(escrowAddress: string): Promise<Observable<any>> {
-    const signer = await this.web3Service.getSigner();
-    const escrowContract = await this.getEscrowContract(escrowAddress);
-    
-    if (!signer || !escrowContract) {
-      throw new Error('Signer or contract not available');
-    }
-
-    const contractWithSigner = escrowContract.connect(signer);
-    return from((contractWithSigner as any).finalizeSale());
-  }
-
-  async cancelSale(escrowAddress: string): Promise<Observable<any>> {
-    const signer = await this.web3Service.getSigner();
-    const escrowContract = await this.getEscrowContract(escrowAddress);
-    
-    if (!signer || !escrowContract) {
-      throw new Error('Signer or contract not available');
-    }
-
-    const contractWithSigner = escrowContract.connect(signer);
-    return from((contractWithSigner as any).cancelSale());
   }
 
   async getTimelockStatus(escrowAddress: string, actionType: string): Promise<{isPending: boolean, executeAfter: bigint} | null> {
@@ -290,6 +254,182 @@ export class ContractService {
       console.error('Failed to get property balance:', error);
       return BigInt(0);
     }
+  }
+
+  // Extended methods for escrow management system
+  async getUserEscrows(): Promise<string[]> {
+    // This would typically query a registry or event logs to find user's escrows
+    // For now, return mock data
+    return [
+      '0x1234567890123456789012345678901234567890',
+      '0x0987654321098765432109876543210987654321'
+    ];
+  }
+
+  async getEscrowDetails(escrowAddress: string): Promise<any> {
+    try {
+      const escrowContract = await this.getEscrowContract(escrowAddress);
+      if (!escrowContract) throw new Error('Contract not found');
+
+      const config = await (escrowContract as any).config();
+      return config;
+    } catch (error) {
+      console.error('Failed to get escrow details:', error);
+      throw error;
+    }
+  }
+
+  async getEscrowBuyers(escrowAddress: string): Promise<string[]> {
+    // This would query the buyers from the contract
+    // For now, return mock data
+    return ['0x1111111111111111111111111111111111111111'];
+  }
+
+  async getBuyerShares(escrowAddress: string, buyerAddress: string): Promise<bigint> {
+    try {
+      const escrowContract = await this.getEscrowContract(escrowAddress);
+      if (!escrowContract) return BigInt(0);
+
+      return await (escrowContract as any).buyerShares(buyerAddress);
+    } catch (error) {
+      console.error('Failed to get buyer shares:', error);
+      return BigInt(0);
+    }
+  }
+
+  async getBuyerDeposited(escrowAddress: string, buyerAddress: string): Promise<bigint> {
+    try {
+      const escrowContract = await this.getEscrowContract(escrowAddress);
+      if (!escrowContract) return BigInt(0);
+
+      return await (escrowContract as any).buyerEarnestDeposited(buyerAddress);
+    } catch (error) {
+      console.error('Failed to get buyer deposited amount:', error);
+      return BigInt(0);
+    }
+  }
+
+  async getApprovalStatus(escrowAddress: string, address: string): Promise<boolean> {
+    try {
+      const escrowContract = await this.getEscrowContract(escrowAddress);
+      if (!escrowContract) return false;
+
+      return await (escrowContract as any).approvals(address);
+    } catch (error) {
+      console.error('Failed to get approval status:', error);
+      return false;
+    }
+  }
+
+  // Contract interaction methods
+  async initializeBuyers(escrowAddress: string, buyers: string[], shares: number[]): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).initializeBuyers(buyers, shares);
+  }
+
+  async depositEarnest(escrowAddress: string, amount: number): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    const amountWei = ethers.parseUnits(amount.toString(), 6); // USDC has 6 decimals
+    return await (contractWithSigner as any).depositEarnest(amountWei);
+  }
+
+  async updateInspectionStatus(escrowAddress: string, passed: boolean): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).updateInspectionStatus(passed);
+  }
+
+  async approveByRole(escrowAddress: string, role: string): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).approveByRole(role);
+  }
+
+  async depositFullPrice(escrowAddress: string, amount: number): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    const amountWei = ethers.parseUnits(amount.toString(), 6); // USDC has 6 decimals
+    return await (contractWithSigner as any).depositFullPrice(amountWei);
+  }
+
+  async initiateFinalizeSale(escrowAddress: string): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).initiateFinalizeSale();
+  }
+
+  async finalizeSale(escrowAddress: string): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).finalizeSale();
+  }
+
+  async initiateCancelSale(escrowAddress: string): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).initiateCancelSale();
+  }
+
+  async cancelSale(escrowAddress: string): Promise<any> {
+    const signer = await this.web3Service.getSigner();
+    const escrowContract = await this.getEscrowContract(escrowAddress);
+    
+    if (!signer || !escrowContract) {
+      throw new Error('Signer or contract not available');
+    }
+
+    const contractWithSigner = escrowContract.connect(signer);
+    return await (contractWithSigner as any).cancelSale();
   }
 
   updateProperties(properties: PropertyDetails[]) {
