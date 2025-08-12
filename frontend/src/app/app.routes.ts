@@ -3,8 +3,13 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: '/dashboard',
+    redirectTo: '/home',
     pathMatch: 'full'
+  },
+  {
+    path: 'home',
+    loadComponent: () => import('./components/landing-page/landing-page.component')
+      .then(m => m.LandingPageComponent)
   },
   {
     path: 'dashboard',
@@ -38,8 +43,8 @@ export const routes: Routes = [
   },
   {
     path: 'portfolio',
-    loadComponent: () => import('./components/property-list/property-list.component')
-      .then(m => m.PropertyListComponent) // Reuse property list with different mode
+    loadComponent: () => import('./components/portfolio-dashboard/portfolio-dashboard.component')
+      .then(m => m.PortfolioDashboardComponent)
   },
   {
     path: 'transactions',
@@ -52,7 +57,12 @@ export const routes: Routes = [
       .then(m => m.CrossChainBridgeComponent)
   },
   {
+    path: 'kyc',
+    loadComponent: () => import('./components/kyc-status/kyc-status.component')
+      .then(m => m.KYCStatusComponent)
+  },
+  {
     path: '**',
-    redirectTo: '/dashboard'
+    redirectTo: '/home'
   }
 ];

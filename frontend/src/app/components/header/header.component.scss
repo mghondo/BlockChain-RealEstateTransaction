@@ -5,15 +5,15 @@
   left: 0;
   right: 0;
   z-index: 1000;
-  min-height: 72px;
-  padding: 0 24px;
+  min-height: 112px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--border-color);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 
   @media (max-width: 768px) {
-    padding: 0 16px;
-    min-height: 64px;
+    padding: 20px 16px;
+    min-height: 104px;
   }
 
   .toolbar-content {

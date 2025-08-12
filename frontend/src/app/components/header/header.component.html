@@ -1,7 +1,7 @@
 <mat-toolbar class="header-toolbar glass-card">
   <div class="toolbar-content">
     <!-- Logo & Brand -->
-    <div class="brand-section fade-in" [routerLink]="['/']">
+    <div class="brand-section fade-in" [routerLink]="['/home']">
       <div class="logo-container">
         <div class="logo-icon">🏛️</div>
         <h1 class="brand-title crypto-title">FracEstate</h1>
@@ -12,24 +12,31 @@
     <!-- Navigation Menu -->
     <nav class="nav-menu">
       <a mat-button 
-         routerLink="/dashboard" 
+         routerLink="/home" 
          routerLinkActive="active-link"
          class="nav-link">
-        <mat-icon>dashboard</mat-icon>
-        Dashboard
+        <!-- <mat-icon>home_work</mat-icon> -->
+        Home
       </a>
       <a mat-button 
          routerLink="/properties" 
          routerLinkActive="active-link"
          class="nav-link">
-        <mat-icon>home</mat-icon>
+        <!-- <mat-icon>home</mat-icon> -->
         Properties
+      </a>
+      <a mat-button 
+         routerLink="/portfolio" 
+         routerLinkActive="active-link"
+         class="nav-link">
+        <!-- <mat-icon>dashboard</mat-icon> -->
+        Portfolio
       </a>
       <a mat-button 
          routerLink="/bridge" 
          routerLinkActive="active-link"
          class="nav-link">
-        <mat-icon>swap_horiz</mat-icon>
+        <!-- <mat-icon>swap_horiz</mat-icon> -->
         Bridge
       </a>
     </nav>
@@ -131,7 +138,6 @@
               <mat-spinner diameter="20" class="spinner"></mat-spinner>
               <span>Connecting...</span>
             } @else {
-              <mat-icon>account_balance_wallet</mat-icon>
               <span>Connect Wallet</span>
             }
           </button>

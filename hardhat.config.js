@@ -26,7 +26,7 @@ module.exports = {
   networks: {
     // Local development network configuration
     localhost: {
-      url: "http://127.0.0.1:8545" // Local Hardhat node URL for development and testing
+      url: "http://127.0.0.1:8547" // Local Hardhat node URL for development and testing
     },
     // Sepolia testnet configuration for testing with real network conditions
     sepolia: {

@@ -1,0 +1,515 @@
+.analytics-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+  padding: 20px;
+
+  .chart-card {
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    background: white;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    .mat-mdc-card-header {
+      padding: 24px 24px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+
+      .mat-mdc-card-title {
+        color: #1e293b;
+        font-size: 1.4rem;
+        font-weight: 700;
+        margin: 0;
+      }
+
+      .mat-mdc-card-subtitle {
+        color: #64748b;
+        font-size: 1rem;
+        margin-top: 4px;
+      }
+
+      .chart-controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .period-selector,
+        .category-selector {
+          min-width: 120px;
+
+          .mat-mdc-form-field-wrapper {
+            .mat-mdc-text-field-wrapper {
+              height: 40px;
+              border-radius: 8px;
+            }
+          }
+
+          .mat-mdc-form-field-subscript-wrapper {
+            display: none;
+          }
+        }
+
+        button {
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
+        }
+      }
+    }
+
+    .mat-mdc-card-content {
+      padding: 24px;
+
+      .chart-container {
+        position: relative;
+        height: 350px;
+        width: 100%;
+        margin-bottom: 20px;
+
+        canvas {
+          width: 100% !important;
+          height: 100% !important;
+        }
+      }
+
+      .chart-metrics {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 16px;
+        padding: 20px;
+        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+
+        .metric-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          padding: 12px;
+          background: white;
+          border-radius: 8px;
+          border: 1px solid #f1f5f9;
+
+          .metric-label {
+            font-size: 0.9rem;
+            color: #64748b;
+            font-weight: 500;
+            margin-bottom: 8px;
+          }
+
+          .metric-value {
+            font-size: 1.4rem;
+            font-weight: 700;
+
+            &.positive {
+              color: #059669;
+            }
+
+            &.negative {
+              color: #dc2626;
+            }
+
+            &:not(.positive):not(.negative) {
+              color: #1e293b;
+            }
+          }
+        }
+      }
+
+      .diversification-legend {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 20px;
+
+        .legend-item {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          background: #f8fafc;
+          border-radius: 8px;
+          border-left: 4px solid;
+          transition: background-color 0.2s ease;
+
+          &:hover {
+            background: #f1f5f9;
+          }
+
+          .legend-label {
+            font-weight: 600;
+            color: #374151;
+          }
+
+          .legend-value {
+            font-weight: 500;
+            color: #64748b;
+            font-size: 0.9rem;
+          }
+        }
+      }
+    }
+
+    // Specific chart card styles
+    &.performance-chart {
+      .chart-container {
+        height: 400px;
+      }
+    }
+
+    &.yield-chart {
+      .chart-container {
+        height: 320px;
+      }
+    }
+
+    &.diversification-chart {
+      .chart-container {
+        height: 300px;
+      }
+    }
+
+    &.roi-chart {
+      .chart-container {
+        height: 320px;
+      }
+    }
+
+    &.trends-chart {
+      .chart-container {
+        height: 350px;
+      }
+    }
+
+    &.risk-chart {
+      .chart-container {
+        height: 350px;
+      }
+    }
+  }
+
+  // Grid layout adjustments for specific chart combinations
+  &.full-width {
+    grid-template-columns: 1fr;
+  }
+
+  &.two-column {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  &.three-column {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  // Responsive design
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, 1fr);
+    
+    .chart-card {
+      .mat-mdc-card-header {
+        .chart-controls {
+          flex-direction: column;
+          gap: 8px;
+          align-items: flex-end;
+
+          .period-selector,
+          .category-selector {
+            min-width: 100px;
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 16px;
+
+    .chart-card {
+      .mat-mdc-card-header {
+        padding: 20px 20px 0;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 16px;
+
+        .chart-controls {
+          width: 100%;
+          flex-direction: row;
+          justify-content: space-between;
+          align-items: center;
+
+          .period-selector,
+          .category-selector {
+            min-width: 140px;
+          }
+        }
+      }
+
+      .mat-mdc-card-content {
+        padding: 20px;
+
+        .chart-container {
+          height: 300px;
+        }
+
+        .chart-metrics {
+          grid-template-columns: repeat(2, 1fr);
+          gap: 12px;
+          padding: 16px;
+
+          .metric-item {
+            padding: 8px;
+
+            .metric-label {
+              font-size: 0.8rem;
+              margin-bottom: 4px;
+            }
+
+            .metric-value {
+              font-size: 1.2rem;
+            }
+          }
+        }
+
+        .diversification-legend {
+          grid-template-columns: 1fr;
+          gap: 8px;
+
+          .legend-item {
+            padding: 8px 12px;
+            border-left-width: 3px;
+
+            .legend-label {
+              font-size: 0.9rem;
+            }
+
+            .legend-value {
+              font-size: 0.8rem;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 600px) {
+    padding: 12px;
+    gap: 16px;
+
+    .chart-card {
+      .mat-mdc-card-header {
+        padding: 16px 16px 0;
+
+        .mat-mdc-card-title {
+          font-size: 1.2rem;
+        }
+
+        .mat-mdc-card-subtitle {
+          font-size: 0.9rem;
+        }
+
+        .chart-controls {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 12px;
+
+          .period-selector,
+          .category-selector {
+            min-width: unset;
+            width: 100%;
+          }
+        }
+      }
+
+      .mat-mdc-card-content {
+        padding: 16px;
+
+        .chart-container {
+          height: 250px;
+        }
+
+        .chart-metrics {
+          grid-template-columns: 1fr;
+          padding: 12px;
+
+          .metric-item {
+            .metric-value {
+              font-size: 1.1rem;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @media (max-width: 400px) {
+    .chart-card {
+      .mat-mdc-card-content {
+        .chart-container {
+          height: 220px;
+        }
+      }
+    }
+  }
+}
+
+// Loading states
+.chart-loading {
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    z-index: 10;
+  }
+
+  &::before {
+    content: 'Loading...';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 11;
+    font-weight: 600;
+    color: #64748b;
+  }
+}
+
+// Error states
+.chart-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: #64748b;
+  text-align: center;
+  padding: 40px;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+  }
+
+  .error-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #374151;
+  }
+
+  .error-message {
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  button {
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: none;
+  }
+}
+
+// Empty states
+.chart-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 300px;
+  color: #9ca3af;
+  text-align: center;
+  padding: 40px;
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin-bottom: 20px;
+    opacity: 0.3;
+  }
+
+  .empty-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #6b7280;
+  }
+
+  .empty-message {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    margin-bottom: 20px;
+  }
+
+  button {
+    border-radius: 8px;
+    font-weight: 600;
+    text-transform: none;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+  }
+}
+
+// Animation classes
+.chart-fade-in {
+  animation: chartFadeIn 0.5s ease-in-out;
+}
+
+@keyframes chartFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.chart-slide-in {
+  animation: chartSlideIn 0.3s ease-out;
+}
+
+@keyframes chartSlideIn {
+  from { transform: translateX(-20px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+// Tooltip customization
+.chart-tooltip {
+  background: rgba(0, 0, 0, 0.9) !important;
+  border: 1px solid #667eea !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  
+  .tooltip-title {
+    font-weight: 600 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 4px !important;
+  }
+  
+  .tooltip-body {
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+  }
+}

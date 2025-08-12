@@ -1,8 +1,44 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { Observable, from, of, throwError } from 'rxjs';
+import { Observable, from, of, throwError, BehaviorSubject } from 'rxjs';
 import { catchError, retry, switchMap, timeout, map } from 'rxjs/operators';
 import { PropertyMetadata } from './contract.service';
+
+export interface IPFSUploadProgress {
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'completed' | 'error';
+  hash?: string;
+  error?: string;
+  pinned: boolean;
+}
+
+export interface ERC1155Metadata {
+  name: string;
+  description: string;
+  image: string;
+  external_url?: string;
+  background_color?: string;
+  attributes: Array<{
+    trait_type: string;
+    value: string | number;
+    display_type?: string;
+  }>;
+  properties: {
+    address: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    propertyType: string;
+    bedrooms: number;
+    bathrooms: number;
+    squareFeet: number;
+    yearBuilt: number;
+    lotSize?: number;
+    amenities: string[];
+    legalDescription: string;
+  };
+}
 
 export interface IPFSGateway {
   name: string;
@@ -40,6 +76,9 @@ export class IPFSService {
   private metadataCache = new Map<string, PropertyMetadata>();
   private imageCache = new Map<string, string>();
   private failedGateways = new Set<string>();
+  
+  private uploadProgressSubject = new BehaviorSubject<IPFSUploadProgress[]>([]);
+  public uploadProgress$ = this.uploadProgressSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
@@ -265,5 +304,249 @@ export class IPFSService {
   isValidIPFSHash(hash: string): boolean {
     const ipfsHashRegex = /^Qm[1-9A-HJ-NP-Za-km-z]{44}$/;
     return ipfsHashRegex.test(hash);
+  }
+
+  // Advanced upload functionality
+  async uploadFile(file: File): Promise<string> {
+    const uploadProgress: IPFSUploadProgress = {
+      file,
+      progress: 0,
+      status: 'pending',
+      pinned: false
+    };
+
+    const currentUploads = this.uploadProgressSubject.value;
+    this.uploadProgressSubject.next([...currentUploads, uploadProgress]);
+
+    try {
+      // Compress image if needed
+      const processedFile = await this.processImage(file);
+      
+      uploadProgress.status = 'uploading';
+      uploadProgress.progress = 10;
+      this.updateProgress(uploadProgress);
+
+      // Simulate upload to Pinata (replace with actual API)
+      const hash = await this.mockUploadToPinata(processedFile, uploadProgress);
+      
+      uploadProgress.hash = hash;
+      uploadProgress.status = 'completed';
+      uploadProgress.progress = 100;
+      uploadProgress.pinned = true;
+      this.updateProgress(uploadProgress);
+
+      return hash;
+
+    } catch (error: any) {
+      uploadProgress.status = 'error';
+      uploadProgress.error = error.message;
+      this.updateProgress(uploadProgress);
+      throw error;
+    }
+  }
+
+  async uploadMetadata(metadata: ERC1155Metadata): Promise<string> {
+    try {
+      // Validate metadata schema
+      this.validateERC1155Metadata(metadata);
+
+      const metadataBlob = new Blob([JSON.stringify(metadata, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const metadataFile = new File([metadataBlob], 'metadata.json', {
+        type: 'application/json'
+      });
+
+      return await this.uploadFile(metadataFile);
+
+    } catch (error: any) {
+      throw new Error(`Metadata upload failed: ${error.message}`);
+    }
+  }
+
+  private async processImage(file: File): Promise<File> {
+    if (!file.type.startsWith('image/')) {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+      const img = new Image();
+
+      img.onload = () => {
+        // Resize if larger than 2048px
+        const maxSize = 2048;
+        let { width, height } = img;
+
+        if (width > maxSize || height > maxSize) {
+          if (width > height) {
+            height = (height * maxSize) / width;
+            width = maxSize;
+          } else {
+            width = (width * maxSize) / height;
+            height = maxSize;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const compressedFile = new File([blob], file.name, {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          } else {
+            resolve(file);
+          }
+        }, 'image/jpeg', 0.85);
+      };
+
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  private async mockUploadToPinata(file: File, progress: IPFSUploadProgress): Promise<string> {
+    // Mock implementation for development
+    const progressInterval = setInterval(() => {
+      if (progress.progress < 90) {
+        progress.progress += 10;
+        this.updateProgress(progress);
+      }
+    }, 200);
+
+    try {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Generate mock hash based on file content
+      const mockHash = 'Qm' + Math.random().toString(36).substring(2, 46);
+      
+      clearInterval(progressInterval);
+      return mockHash;
+
+    } catch (error) {
+      clearInterval(progressInterval);
+      throw error;
+    }
+  }
+
+  private validateERC1155Metadata(metadata: ERC1155Metadata): void {
+    const required = ['name', 'description', 'image'];
+    
+    for (const field of required) {
+      if (!metadata[field as keyof ERC1155Metadata]) {
+        throw new Error(`Required field '${field}' is missing`);
+      }
+    }
+
+    if (!Array.isArray(metadata.attributes)) {
+      throw new Error('Attributes must be an array');
+    }
+
+    if (!metadata.properties) {
+      throw new Error('Properties object is required');
+    }
+
+    // Validate property schema
+    const requiredProps = ['address', 'city', 'state', 'propertyType'];
+    for (const prop of requiredProps) {
+      if (!metadata.properties[prop as keyof typeof metadata.properties]) {
+        throw new Error(`Required property '${prop}' is missing`);
+      }
+    }
+  }
+
+  private updateProgress(progress: IPFSUploadProgress): void {
+    const currentUploads = this.uploadProgressSubject.value;
+    const index = currentUploads.findIndex(u => u.file === progress.file);
+    
+    if (index >= 0) {
+      currentUploads[index] = progress;
+      this.uploadProgressSubject.next([...currentUploads]);
+    }
+  }
+
+  createERC1155MetadataTemplate(propertyData: any): ERC1155Metadata {
+    return {
+      name: propertyData.name || 'Fractional Real Estate Property',
+      description: propertyData.description || 'Tokenized real estate investment opportunity',
+      image: propertyData.imageHash ? this.getIPFSUrl(propertyData.imageHash) : '',
+      external_url: propertyData.externalUrl,
+      background_color: 'f8fafc',
+      attributes: [
+        {
+          trait_type: 'Property Type',
+          value: propertyData.propertyType || 'Residential'
+        },
+        {
+          trait_type: 'Bedrooms',
+          value: propertyData.bedrooms || 0,
+          display_type: 'number'
+        },
+        {
+          trait_type: 'Bathrooms',
+          value: propertyData.bathrooms || 0,
+          display_type: 'number'
+        },
+        {
+          trait_type: 'Square Feet',
+          value: propertyData.squareFeet || 0,
+          display_type: 'number'
+        },
+        {
+          trait_type: 'Year Built',
+          value: propertyData.yearBuilt || new Date().getFullYear(),
+          display_type: 'date'
+        },
+        {
+          trait_type: 'City',
+          value: propertyData.city || ''
+        },
+        {
+          trait_type: 'State',
+          value: propertyData.state || ''
+        }
+      ],
+      properties: {
+        address: propertyData.address || '',
+        city: propertyData.city || '',
+        state: propertyData.state || '',
+        zipCode: propertyData.zipCode || '',
+        propertyType: propertyData.propertyType || 'Residential',
+        bedrooms: propertyData.bedrooms || 0,
+        bathrooms: propertyData.bathrooms || 0,
+        squareFeet: propertyData.squareFeet || 0,
+        yearBuilt: propertyData.yearBuilt || new Date().getFullYear(),
+        lotSize: propertyData.lotSize,
+        amenities: propertyData.amenities || [],
+        legalDescription: propertyData.legalDescription || ''
+      }
+    };
+  }
+
+  private getIPFSUrl(hash: string): string {
+    return `${this.gateways[0].url}${hash}`;
+  }
+
+  clearUploadHistory(): void {
+    this.uploadProgressSubject.next([]);
+  }
+
+  getUploadHistory(): IPFSUploadProgress[] {
+    return this.uploadProgressSubject.value;
+  }
+
+  async verifyHash(hash: string): Promise<boolean> {
+    try {
+      const response = await fetch(this.getIPFSUrl(hash), { method: 'HEAD' });
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 }
