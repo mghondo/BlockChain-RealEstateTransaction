@@ -1,12 +1,24 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { Web3Provider } from './contexts/Web3Context';
 import Header from './components/Header/Header';
 import PropertyList from './components/PropertyList/PropertyList';
+import FracEstatePropertyList from './components/PropertyList/FracEstatePropertyList';
+import SimplePropertyList from './components/PropertyList/SimplePropertyList';
+import DebugPropertyList from './components/PropertyList/DebugPropertyList';
+import BasicFirebaseTest from './components/PropertyList/BasicFirebaseTest';
+import WorkingPropertyList from './components/PropertyList/WorkingPropertyList';
+import MinimalTest from './components/PropertyList/MinimalTest';
+import FinalPropertyList from './components/PropertyList/FinalPropertyList';
 import LandingPage from './components/LandingPage/LandingPage';
 import PropertyDetail from './components/PropertyDetail/PropertyDetail';
+import FracEstatePropertyDetail from './components/PropertyDetail/FracEstatePropertyDetail';
 import Dashboard from './components/Dashboard/Dashboard';
+import Watchlist from './components/Watchlist/Watchlist';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import { initializeFracEstate } from './utils/initializeFracEstate';
 
 // Create dark theme matching the crypto aesthetic
 const darkTheme = createTheme({
@@ -120,25 +132,48 @@ const darkTheme = createTheme({
 });
 
 function App() {
+  // Initialize FracEstate on app load
+  React.useEffect(() => {
+    const initialize = async () => {
+      try {
+        console.log('🏠 Initializing FracEstate...');
+        await initializeFracEstate();
+        console.log('✅ FracEstate initialized successfully');
+      } catch (error) {
+        console.error('❌ Failed to initialize FracEstate:', error);
+      }
+    };
+    
+    initialize();
+  }, []);
+
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Web3Provider>
-        <Router>
-          <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-            <Header />
-            <Box component="main" sx={{ flexGrow: 1 }}>
-              <Routes>
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/properties" element={<PropertyList />} />
-                <Route path="/property/:id" element={<PropertyDetail />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
+      <ErrorBoundary>
+        <Web3Provider>
+          <Router>
+            <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+              <Header />
+              <Box component="main" sx={{ flexGrow: 1 }}>
+                <Routes>
+                  <Route path="/" element={<LandingPage />} />
+                  <Route path="/properties" element={<FinalPropertyList />} />
+                  <Route path="/properties/simple" element={<SimplePropertyList />} />
+                  <Route path="/properties/full" element={<FracEstatePropertyList />} />
+                  <Route path="/property/:id" element={<FracEstatePropertyDetail />} />
+                  <Route path="/watchlist" element={<Watchlist />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  {/* Legacy routes for backward compatibility */}
+                  <Route path="/legacy/properties" element={<PropertyList />} />
+                  <Route path="/legacy/property/:id" element={<PropertyDetail />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </Box>
             </Box>
-          </Box>
-        </Router>
-      </Web3Provider>
+          </Router>
+        </Web3Provider>
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }
