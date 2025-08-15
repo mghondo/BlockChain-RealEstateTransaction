@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { Web3Provider } from './contexts/Web3Context';
-import Header from './components/Header/Header';
+import NewHeader from './components/Header/NewHeader';
 import PropertyList from './components/PropertyList/PropertyList';
 import FracEstatePropertyList from './components/PropertyList/FracEstatePropertyList';
 import SimplePropertyList from './components/PropertyList/SimplePropertyList';
@@ -154,7 +154,7 @@ function App() {
         <Web3Provider>
           <Router>
             <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-              <Header />
+              <NewHeader />
               <Box component="main" sx={{ flexGrow: 1 }}>
                 <Routes>
                   <Route path="/" element={<LandingPage />} />

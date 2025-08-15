@@ -24,7 +24,7 @@ import {
 import { useWallet } from '../../hooks/useWallet';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
 
-export default function Header() {
+export default function NewHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -49,6 +49,17 @@ export default function Header() {
 
   const [networkMenuAnchor, setNetworkMenuAnchor] = useState<null | HTMLElement>(null);
   const [walletMenuAnchor, setWalletMenuAnchor] = useState<null | HTMLElement>(null);
+
+  const navigationItems = [
+    { label: 'Home', path: '/' },
+    { label: 'Properties', path: '/properties' },
+    ...(isConnected ? [{ label: 'Dashboard', path: '/dashboard' }] : [])
+  ];
+
+  const handleNavClick = (path: string) => {
+    console.log('🚀 Navigation clicked for path:', path);
+    navigate(path);
+  };
 
   const handleConnectWallet = async () => {
     try {
@@ -98,56 +109,40 @@ export default function Header() {
   };
 
   const usdcBalance = getTokenBalance('USDC');
-
   const mainnetNetworks = supportedNetworks.filter(n => !n.isTestnet);
   const testnetNetworks = supportedNetworks.filter(n => n.isTestnet);
-
-  const navigationItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Properties', path: '/properties' },
-    ...(isConnected ? [{ label: 'Dashboard', path: '/dashboard' }] : [])
-  ];
 
   return (
     <AppBar position="static" sx={{ backgroundColor: 'background.paper', color: 'text.primary' }}>
       <Toolbar>
         <Typography 
           variant="h6" 
-          component="div" 
+          onClick={() => handleNavClick('/')}
           sx={{ fontWeight: 'bold', cursor: 'pointer', mr: 4 }}
-          onClick={() => navigate('/')}
         >
           FracEstate
         </Typography>
 
-        {/* Navigation Links - Using Link Components Instead of Buttons */}
-        <Box sx={{ 
-          display: 'flex',
-          mr: 'auto'
-        }}>
+        <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}>
           {navigationItems.map((item) => (
-            <Box
+            <Typography
               key={item.path}
-              component="button"
-              onClick={() => navigate(item.path)}
-              sx={{ 
-                mx: 1,
+              onClick={() => handleNavClick(item.path)}
+              sx={{
+                cursor: 'pointer',
                 px: 2,
                 py: 1,
-                backgroundColor: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
+                borderRadius: 1,
                 fontWeight: location.pathname === item.path ? 600 : 400,
                 color: location.pathname === item.path ? 'primary.main' : 'inherit',
-                fontSize: '0.875rem',
-                fontFamily: 'inherit',
+                backgroundColor: 'transparent',
                 '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)'
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
                 }
               }}
             >
               {item.label}
-            </Box>
+            </Typography>
           ))}
         </Box>
 
@@ -220,19 +215,50 @@ export default function Header() {
           </Button>
         )}
 
-        {/* Network Selection Menu */}
-        <Menu
-          anchorEl={networkMenuAnchor}
-          open={Boolean(networkMenuAnchor)}
-          onClose={() => setNetworkMenuAnchor(null)}
-          PaperProps={{
-            sx: { minWidth: 250 }
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
-            Mainnet Networks
-          </Typography>
-          {mainnetNetworks.map((network) => (
+        {/* Error Display */}
+        {error && (
+          <Chip
+            label={error}
+            color="error"
+            size="small"
+            sx={{ ml: 1 }}
+          />
+        )}
+      </Toolbar>
+
+      {/* Network Selection Menu */}
+      <Menu
+        anchorEl={networkMenuAnchor}
+        open={Boolean(networkMenuAnchor)}
+        onClose={() => setNetworkMenuAnchor(null)}
+        PaperProps={{
+          sx: { minWidth: 250 }
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
+          Mainnet Networks
+        </Typography>
+        {mainnetNetworks.map((network) => (
+          <MenuItem
+            key={network.chainId}
+            onClick={() => handleNetworkSwitch(network.chainId)}
+            selected={network.chainId === chainId}
+          >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+              <Typography>{network.displayName}</Typography>
+              <Typography variant="body2" color="text.secondary">
+                {network.symbol}
+              </Typography>
+            </Box>
+          </MenuItem>
+        ))}
+        
+        {testnetNetworks.length > 0 && [
+          <Divider key="divider" />,
+          <Typography key="header" variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
+            Testnet Networks
+          </Typography>,
+          ...testnetNetworks.map((network) => (
             <MenuItem
               key={network.chainId}
               onClick={() => handleNetworkSwitch(network.chainId)}
@@ -245,92 +271,61 @@ export default function Header() {
                 </Typography>
               </Box>
             </MenuItem>
-          ))}
-          
-          {testnetNetworks.length > 0 && [
-            <Divider key="divider" />,
-            <Typography key="header" variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
-              Testnet Networks
-            </Typography>,
-            ...testnetNetworks.map((network) => (
-              <MenuItem
-                key={network.chainId}
-                onClick={() => handleNetworkSwitch(network.chainId)}
-                selected={network.chainId === chainId}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                  <Typography>{network.displayName}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {network.symbol}
-                  </Typography>
-                </Box>
-              </MenuItem>
-            ))
-          ]}
-        </Menu>
+          ))
+        ]}
+      </Menu>
 
-        {/* Wallet Menu */}
-        <Menu
-          anchorEl={walletMenuAnchor}
-          open={Boolean(walletMenuAnchor)}
-          onClose={() => setWalletMenuAnchor(null)}
-          PaperProps={{
-            sx: { minWidth: 300 }
-          }}
-        >
-          <Box sx={{ p: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Connected Account
-            </Typography>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
-              {account}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <Tooltip title="Copy Address">
-                <IconButton size="small" onClick={handleCopyAddress}>
-                  <ContentCopy fontSize="small" />
-                </IconButton>
-              </Tooltip>
-              <Tooltip title="View on Explorer">
-                <IconButton size="small" onClick={openNetworkExplorer}>
-                  <Launch fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Box>
-            
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Balances
-            </Typography>
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2">
-                {formatBalance(balance)} {currentNetwork?.symbol || 'ETH'}
-              </Typography>
-              {tokenBalances.map((token) => (
-                <Typography key={token.symbol} variant="body2">
-                  {token.formatted} {token.symbol}
-                </Typography>
-              ))}
-            </Box>
+      {/* Wallet Menu */}
+      <Menu
+        anchorEl={walletMenuAnchor}
+        open={Boolean(walletMenuAnchor)}
+        onClose={() => setWalletMenuAnchor(null)}
+        PaperProps={{
+          sx: { minWidth: 300 }
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Connected Account
+          </Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
+            {account}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
+            <Tooltip title="Copy Address">
+              <IconButton size="small" onClick={handleCopyAddress}>
+                <ContentCopy fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title="View on Explorer">
+              <IconButton size="small" onClick={openNetworkExplorer}>
+                <Launch fontSize="small" />
+              </IconButton>
+            </Tooltip>
           </Box>
           
-          <Divider />
-          
-          <MenuItem onClick={disconnectWallet}>
-            <Close sx={{ mr: 1 }} />
-            Disconnect Wallet
-          </MenuItem>
-        </Menu>
-
-        {/* Error Display */}
-        {error && (
-          <Chip
-            label={error}
-            color="error"
-            size="small"
-            sx={{ ml: 1 }}
-          />
-        )}
-      </Toolbar>
+          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+            Balances
+          </Typography>
+          <Box sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              {formatBalance(balance)} {currentNetwork?.symbol || 'ETH'}
+            </Typography>
+            {tokenBalances.map((token) => (
+              <Typography key={token.symbol} variant="body2">
+                {token.formatted} {token.symbol}
+              </Typography>
+            ))}
+          </Box>
+        </Box>
+        
+        <Divider />
+        
+        <MenuItem onClick={disconnectWallet}>
+          <Close sx={{ mr: 1 }} />
+          Disconnect Wallet
+        </MenuItem>
+      </Menu>
     </AppBar>
   );
 }

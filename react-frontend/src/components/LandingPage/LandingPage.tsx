@@ -159,7 +159,7 @@ export default function LandingPage() {
             left: 0,
             right: 0,
             bottom: 0,
-            zIndex: 0,
+            zIndex: -1, // NEGATIVE Z-INDEX so it stays behind header
             borderRadius: 2,
             overflow: 'hidden',
           }}
@@ -282,6 +282,7 @@ export default function LandingPage() {
             Invest in premium real estate properties through blockchain technology. 
             Own fractions of high-value properties, earn yield, and trade tokens seamlessly.
           </Typography>
+
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
             <Button
