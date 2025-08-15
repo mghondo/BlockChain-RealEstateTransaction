@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -20,6 +20,8 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../../hooks/useWallet';
+import type { PropertyClass } from '../../types/property';
+import imageInventory from '../../utils/imageInventory.json';
 
 const features = [
   {
@@ -61,9 +63,73 @@ const stats = [
   { label: 'Average APY', value: '8.5%' }
 ];
 
+// Background slideshow configuration
+const baseUrl = 'https://fractional-real-estate.netlify.app';
+
+interface BackgroundImage {
+  src: string;
+  direction: 'left' | 'right' | 'up' | 'down' | 'diagonal-up' | 'diagonal-down';
+  duration: number;
+  delay: number;
+}
+
+// Function to get random images from inventory
+const getRandomBackgroundImages = (): BackgroundImage[] => {
+  const images: BackgroundImage[] = [];
+  const directions: BackgroundImage['direction'][] = ['left', 'right', 'up', 'down', 'diagonal-up', 'diagonal-down'];
+  
+  // Get 2 images from each class (A, B, C)
+  const classes: PropertyClass[] = ['A', 'B', 'C'];
+  
+  classes.forEach(propertyClass => {
+    const anywhereImages = (imageInventory as any)[propertyClass]?.['Anywhere'] || [];
+    if (anywhereImages.length > 0) {
+      // Get 2 random images from this class
+      for (let i = 0; i < 2; i++) {
+        const randomIndex = Math.floor(Math.random() * anywhereImages.length);
+        const filename = anywhereImages[randomIndex];
+        const randomDirection = directions[Math.floor(Math.random() * directions.length)];
+        
+        images.push({
+          src: `${baseUrl}/${propertyClass}/Anywhere/${filename}`,
+          direction: randomDirection,
+          duration: 20 + Math.random() * 20, // 20-40 seconds
+          delay: Math.random() * 5 // 0-5 second delay
+        });
+      }
+    }
+  });
+  
+  // Shuffle the array for random order
+  for (let i = images.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [images[i], images[j]] = [images[j], images[i]];
+  }
+  
+  return images;
+};
+
 export default function LandingPage() {
   const navigate = useNavigate();
   const { isConnected, connectWallet } = useWallet();
+  const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  // Generate random background images on component mount
+  useEffect(() => {
+    setBackgroundImages(getRandomBackgroundImages());
+  }, []);
+
+  // Auto-advance slideshow every 5 seconds
+  useEffect(() => {
+    if (backgroundImages.length === 0) return;
+    
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % backgroundImages.length);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [backgroundImages.length]);
 
   const handleGetStarted = async () => {
     if (!isConnected) {
@@ -83,15 +149,98 @@ export default function LandingPage() {
 
   return (
     <Box sx={{ overflow: 'hidden' }}>
-      {/* Hero Section */}
+      {/* Hero Section with Background Slideshow */}
       <Container maxWidth="lg">
+        {/* Background Image Slideshow */}
+        <Box
+          sx={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 0,
+            borderRadius: 2,
+            overflow: 'hidden',
+          }}
+        >
+          {backgroundImages.map((img, index) => {
+            // Generate random pan direction for each image
+            const getPanAnimation = (direction: string) => {
+              const panAmount = '3%';
+              switch (direction) {
+                case 'left':
+                  return {
+                    '0%': { transform: 'scale(1.2) translateX(0%)' },
+                    '100%': { transform: `scale(1.2) translateX(-${panAmount})` }
+                  };
+                case 'right':
+                  return {
+                    '0%': { transform: 'scale(1.2) translateX(0%)' },
+                    '100%': { transform: `scale(1.2) translateX(${panAmount})` }
+                  };
+                case 'up':
+                  return {
+                    '0%': { transform: 'scale(1.2) translateY(0%)' },
+                    '100%': { transform: `scale(1.2) translateY(-${panAmount})` }
+                  };
+                case 'down':
+                  return {
+                    '0%': { transform: 'scale(1.2) translateY(0%)' },
+                    '100%': { transform: `scale(1.2) translateY(${panAmount})` }
+                  };
+                case 'diagonal-up':
+                  return {
+                    '0%': { transform: 'scale(1.2) translate(0%, 0%)' },
+                    '100%': { transform: `scale(1.2) translate(-${panAmount}, -${panAmount})` }
+                  };
+                case 'diagonal-down':
+                  return {
+                    '0%': { transform: 'scale(1.2) translate(0%, 0%)' },
+                    '100%': { transform: `scale(1.2) translate(${panAmount}, ${panAmount})` }
+                  };
+                default:
+                  return {
+                    '0%': { transform: 'scale(1.2) translateX(0%)' },
+                    '100%': { transform: `scale(1.2) translateX(${panAmount})` }
+                  };
+              }
+            };
+
+            return (
+              <Box
+                key={index}
+                component="img"
+                src={img.src}
+                sx={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  opacity: index === currentImageIndex ? 0.2 : 0,
+                  transition: 'opacity 1s ease-in-out',
+                  animation: `slowPan-${img.direction} 5s ease-in-out infinite alternate`,
+                  [`@keyframes slowPan-${img.direction}`]: getPanAnimation(img.direction)
+                }}
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            );
+          })}
+        </Box>
+
         <Box
           sx={{
             py: { xs: 8, md: 12 },
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            textAlign: 'center'
+            textAlign: 'center',
+            position: 'relative',
+            zIndex: 1,
           }}
         >
           <Typography

@@ -270,7 +270,7 @@ function App() {
                 minHeight: '100vh', 
                 display: 'flex', 
                 flexDirection: 'column',
-                position: 'relative',
+                // position: 'relative',
                 overflow: 'hidden'
               }}
             >
