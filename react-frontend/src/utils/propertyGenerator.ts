@@ -1,4 +1,4 @@
-import { 
+import type { 
   Property, 
   PropertyClass, 
   PropertyRegion, 
@@ -7,27 +7,32 @@ import {
   MockInvestor 
 } from '../types/property';
 import { Timestamp } from 'firebase/firestore';
+import imageInventory from './imageInventory.json';
+
+// Type assertion for image inventory
+type ImageInventory = Record<PropertyClass, Record<PropertyRegion, string[]>>;
+const typedImageInventory = imageInventory as ImageInventory;
 
 // US States to regions mapping
 export const STATE_REGION_MAPPING: StateRegionMapping = {
   // Southeast
-  'FL': 'southeast', 'GA': 'southeast', 'SC': 'southeast', 'AL': 'southeast', 'MS': 'southeast',
-  'NC': 'southeast', 'TN': 'southeast', 'KY': 'southeast', 'VA': 'southeast', 'WV': 'southeast',
-  'AR': 'southeast', 'LA': 'southeast',
+  'FL': 'Southeast', 'GA': 'Southeast', 'SC': 'Southeast', 'AL': 'Southeast', 'MS': 'Southeast',
+  'NC': 'Southeast', 'TN': 'Southeast', 'KY': 'Southeast', 'VA': 'Southeast', 'WV': 'Southeast',
+  'AR': 'Southeast', 'LA': 'Southeast',
   
   // Southwest  
-  'CA': 'southwest', 'AZ': 'southwest', 'NM': 'southwest', 'NV': 'southwest', 'TX': 'southwest',
+  'CA': 'Southwest', 'AZ': 'Southwest', 'NM': 'Southwest', 'NV': 'Southwest', 'TX': 'Southwest',
   
   // Northwest (Class A only - mountain apartments)
-  'WA': 'northwest', 'OR': 'northwest', 'ID': 'northwest', 'MT': 'northwest', 
-  'CO': 'northwest', 'UT': 'northwest', 'WY': 'northwest', 'AK': 'northwest',
+  'WA': 'Northwest', 'OR': 'Northwest', 'ID': 'Northwest', 'MT': 'Northwest', 
+  'CO': 'Northwest', 'UT': 'Northwest', 'WY': 'Northwest', 'AK': 'Northwest',
   
   // Midwest/Northeast (all other states)
-  'IL': 'midwest', 'IN': 'midwest', 'IA': 'midwest', 'KS': 'midwest', 'MI': 'midwest',
-  'MN': 'midwest', 'MO': 'midwest', 'NE': 'midwest', 'ND': 'midwest', 'OH': 'midwest',
-  'SD': 'midwest', 'WI': 'midwest', 'ME': 'midwest', 'NH': 'midwest', 'VT': 'midwest',
-  'MA': 'midwest', 'RI': 'midwest', 'CT': 'midwest', 'NY': 'midwest', 'NJ': 'midwest',
-  'PA': 'midwest', 'DE': 'midwest', 'MD': 'midwest', 'DC': 'midwest', 'HI': 'midwest'
+  'IL': 'Midwest', 'IN': 'Midwest', 'IA': 'Midwest', 'KS': 'Midwest', 'MI': 'Midwest',
+  'MN': 'Midwest', 'MO': 'Midwest', 'NE': 'Midwest', 'ND': 'Midwest', 'OH': 'Midwest',
+  'SD': 'Midwest', 'WI': 'Midwest', 'ME': 'Midwest', 'NH': 'Midwest', 'VT': 'Midwest',
+  'MA': 'Midwest', 'RI': 'Midwest', 'CT': 'Midwest', 'NY': 'Midwest', 'NJ': 'Midwest',
+  'PA': 'Midwest', 'DE': 'Midwest', 'MD': 'Midwest', 'DC': 'Midwest', 'HI': 'Midwest'
 };
 
 // Property class configurations
@@ -146,8 +151,8 @@ export const getRegionFromState = (propertyClass: PropertyClass, state: string):
   const region = STATE_REGION_MAPPING[state] || 'midwest';
   
   // Northwest is only available for Class A properties
-  if (region === 'northwest' && propertyClass !== 'A') {
-    return 'midwest'; // Fallback to midwest for non-A properties
+  if (region === 'Northwest' && propertyClass !== 'A') {
+    return 'Midwest'; // Fallback to midwest for non-A properties
   }
   
   return region;
@@ -177,24 +182,31 @@ export const getRandomCityInState = (state: string): string => {
   return getRandomFromArray(cities);
 };
 
-// Image counter for unique file selection
+// Image counter for tracking (still needed by resetImageCounter function)
 let imageCounter = 1;
 
-// TEMPORARY: Using simple placeholder images until your Netlify CDN is ready
-export const getPropertyImage = async (propertyClass: PropertyClass, region: PropertyRegion): Promise<string> => {
-  const uniqueId = imageCounter++;
+// Real Netlify image selection using actual image inventory
+export const getPropertyImage = (propertyClass: PropertyClass, region: PropertyRegion): string => {
+  const baseUrl = IMAGE_CONFIG.baseUrl; // https://fractional-real-estate.netlify.app
   
-  // Using simple, reliable placeholder service
-  const colors = {
-    'A': '2E8B57', // Sea green for luxury
-    'B': '4682B4', // Steel blue for mid-tier  
-    'C': '8B4513'  // Saddle brown for starter
-  };
+  // Try to get image from specific region first
+  const regionImages = typedImageInventory[propertyClass]?.[region];
+  if (regionImages && regionImages.length > 0) {
+    const randomImage = regionImages[Math.floor(Math.random() * regionImages.length)];
+    return `${baseUrl}/${propertyClass}/${region}/${randomImage}`;
+  }
   
-  const color = colors[propertyClass] || colors['B'];
+  // Fallback to "Anywhere" folder if specific region has no images
+  if (region !== 'Anywhere') {
+    const anywhereImages = typedImageInventory[propertyClass]?.['Anywhere'];
+    if (anywhereImages && anywhereImages.length > 0) {
+      const randomImage = anywhereImages[Math.floor(Math.random() * anywhereImages.length)];
+      return `${baseUrl}/${propertyClass}/Anywhere/${randomImage}`;
+    }
+  }
   
-  // Simplified URL without special characters to avoid encoding issues
-  return `https://via.placeholder.com/400x300/${color}/FFFFFF.png?text=Class${propertyClass}Property${uniqueId}`;
+  // Final fallback: use known working image
+  return `${baseUrl}/A/Anywhere/Whisk_0c19ce0c66.jpg`;
 };
 
 // Removed unused functions that were causing issues
@@ -256,7 +268,7 @@ export const generateProperty = async (): Promise<Omit<Property, 'id'>> => {
   const propertyDetails = generatePropertyDetails(selectedClass);
   
   // Select appropriate image
-  const imageUrl = await getPropertyImage(selectedClass, region);
+  const imageUrl = getPropertyImage(selectedClass, region);
   
   // Set sellout timer (1.5-2 hours from now)
   const selloutMinutes = getRandomBetween(90, 120);

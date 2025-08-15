@@ -28,3 +28,7 @@
 // For continuous development, consider running tests in watch mode or setting up automated formatting in your editor.
 // These commands form the foundation of the development lifecycle for complex DeFi contracts involving real estate tokenization,
 // cross-chain bridges, and yield-bearing escrow mechanisms that require thorough testing and consistent code quality.
+
+  // Complete reset with new TypeScript fixes
+//   fracEstate.reset();
+//   fracEstate.initialize();

@@ -4,7 +4,7 @@ export type PropertyClass = 'A' | 'B' | 'C';
 
 export type PropertyStatus = 'available' | 'ending_soon' | 'sold_out';
 
-export type PropertyRegion = 'midwest' | 'southwest' | 'southeast' | 'northwest' | 'anywhere';
+export type PropertyRegion = 'Midwest' | 'Southwest' | 'Southeast' | 'Northwest' | 'Anywhere';
 
 export interface MockInvestor {
   id: string;
