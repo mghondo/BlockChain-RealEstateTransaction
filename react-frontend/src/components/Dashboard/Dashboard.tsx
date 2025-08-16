@@ -18,6 +18,9 @@ import {
 import { useWallet } from '../../hooks/useWallet';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
 import { PriceDisplay } from '../Currency/PriceDisplay';
+import { RentalIncomeTracker } from '../Income/RentalIncomeTracker';
+import { IncomeChart } from '../Income/IncomeChart';
+import { setupTestInvestments } from '../../utils/createSampleData';
 
 export default function Dashboard() {
   const { isConnected, account, balance, connectWallet } = useWallet();
@@ -89,8 +92,35 @@ export default function Dashboard() {
         Welcome back! Here's your portfolio overview.
       </Typography>
 
+      {/* Test Data Button (for development) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Box sx={{ mb: 3 }}>
+          <Button 
+            variant="outlined"
+            size="small"
+            onClick={() => setupTestInvestments(account || '')}
+            sx={{ mr: 2 }}
+          >
+            🧪 Create Test Investments
+          </Button>
+          <Typography variant="caption" color="text.secondary">
+            Development only: Creates sample properties and investments for testing rental income
+          </Typography>
+        </Box>
+      )}
+
       {/* Crypto Price Display */}
       <PriceDisplay className="mb-6" />
+
+      {/* Rental Income Section */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} lg={8}>
+          <RentalIncomeTracker showDetailed />
+        </Grid>
+        <Grid item xs={12} lg={4}>
+          <IncomeChart />
+        </Grid>
+      </Grid>
 
       {/* Portfolio Overview */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

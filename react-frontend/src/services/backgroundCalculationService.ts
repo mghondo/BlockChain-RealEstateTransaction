@@ -1,5 +1,6 @@
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { RentalIncomeService } from './rentalIncomeService';
 
 interface BackgroundCalculationResult {
   rentalIncomeGenerated: number;
@@ -8,10 +9,89 @@ interface BackgroundCalculationResult {
   monthsProcessed: number;
 }
 
+interface OfflineProgress {
+  realTimeOffline: number;
+  gameTimeElapsed: number;
+  gameMonthsElapsed: number;
+  rentalIncome: number;
+  appreciation: number;
+  newProperties: any[];
+  message: string;
+}
+
 export class BackgroundCalculationService {
   
-  // Main function to process all offline progress
-  static async processOfflineProgress(
+  // Calculate missed rental income using the new RentalIncomeService
+  static async calculateMissedRentalIncome(
+    userId: string, 
+    lastGameTime: Date, 
+    currentGameTime: Date
+  ): Promise<number> {
+    try {
+      console.log('Calculating missed rental income for user:', userId);
+      console.log('Time period:', lastGameTime, 'to', currentGameTime);
+
+      // Calculate how many game months have passed
+      const timeDiff = currentGameTime.getTime() - lastGameTime.getTime();
+      const gameMonthsElapsed = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 30)); // Approx game months
+
+      if (gameMonthsElapsed < 1) {
+        console.log('Less than 1 game month elapsed, no rental processing needed');
+        return 0;
+      }
+
+      console.log(`Processing ${gameMonthsElapsed} months of missed rental income`);
+
+      let totalRentalIncome = 0;
+
+      // Process rental income for each missed month
+      for (let month = 1; month <= gameMonthsElapsed; month++) {
+        const paymentDate = new Date(lastGameTime.getTime() + (month * 30 * 24 * 60 * 60 * 1000));
+        
+        const monthlyIncome = await RentalIncomeService.processUserRentalIncome(userId, paymentDate);
+        totalRentalIncome += monthlyIncome;
+        
+        console.log(`Month ${month}: ${monthlyIncome} rental income processed`);
+      }
+
+      console.log(`Total missed rental income: ${totalRentalIncome}`);
+      return totalRentalIncome;
+
+    } catch (error) {
+      console.error('Error calculating missed rental income:', error);
+      return 0;
+    }
+  }
+
+  // Process offline progress for UI display
+  static async processOfflineProgress(userId: string, lastSeen: Date): Promise<OfflineProgress> {
+    const now = new Date();
+    const offlineRealTime = now.getTime() - lastSeen.getTime();
+    const offlineGameTime = offlineRealTime * 1440; // TIME_MULTIPLIER from useGameTime
+    const currentGameTime = new Date(lastSeen.getTime() + offlineGameTime);
+
+    // Calculate missed rental income
+    const missedRentalIncome = await this.calculateMissedRentalIncome(
+      userId, 
+      lastSeen, 
+      currentGameTime
+    );
+
+    return {
+      realTimeOffline: offlineRealTime,
+      gameTimeElapsed: offlineGameTime,
+      gameMonthsElapsed: Math.floor(offlineGameTime / (1000 * 60 * 60 * 24 * 30)),
+      rentalIncome: missedRentalIncome,
+      appreciation: 0, // TODO: Implement in property appreciation chunk
+      newProperties: [], // TODO: Implement in property generation chunk
+      message: missedRentalIncome > 0 
+        ? `You earned ${missedRentalIncome.toFixed(2)} USDC in rental income while away!`
+        : 'No rental income earned while away.'
+    };
+  }
+  
+  // Legacy method for detailed background calculations (DEPRECATED - use processOfflineProgress instead)
+  static async processLegacyOfflineProgress(
     userId: string, 
     lastSeenGameTime: Date, 
     currentGameTime: Date

@@ -24,9 +24,17 @@ export const GameClock: React.FC<GameClockProps> = ({ showDetailed = false }) =>
         <Box sx={{ 
           width: 8, 
           height: 8, 
-          backgroundColor: 'grey.400', 
+          backgroundColor: 'success.main', 
           borderRadius: '50%',
-          animation: 'pulse 2s infinite'
+          animation: 'syncFlicker 0.2s infinite',
+          '@keyframes syncFlicker': {
+            '0%, 50%': {
+              backgroundColor: 'success.main'
+            },
+            '51%, 100%': {
+              backgroundColor: '#2e7d58'
+            }
+          }
         }} />
         <Typography variant="body2" color="text.secondary">
           Syncing game time...

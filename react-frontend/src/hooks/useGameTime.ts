@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { doc, getDoc, updateDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { BackgroundCalculationService } from '../services/backgroundCalculationService';
+import { RentalIncomeProcessor } from '../services/rentalIncomeProcessor';
 
 interface GameTimeState {
   currentGameTime: Date;
@@ -174,6 +175,26 @@ export const useGameTime = (userId: string) => {
       }
     };
   }, [gameTime, userId]);
+
+  // Start rental income processing when game time is active
+  useEffect(() => {
+    if (!userId || !gameTime?.currentGameTime) return;
+
+    // Start rental income processing
+    RentalIncomeProcessor.startProcessing(userId);
+
+    // Cleanup on unmount
+    return () => {
+      RentalIncomeProcessor.stopProcessing();
+    };
+  }, [userId, gameTime?.currentGameTime]);
+
+  // Manual trigger for rental processing
+  const triggerRentalProcessing = useCallback(async (): Promise<number> => {
+    if (!userId || !gameTime?.currentGameTime) return 0;
+    
+    return await RentalIncomeProcessor.triggerManualProcessing(userId, gameTime.currentGameTime);
+  }, [userId, gameTime?.currentGameTime]);
   
   return {
     gameTime: gameTime?.currentGameTime,
@@ -181,5 +202,6 @@ export const useGameTime = (userId: string) => {
     offlineProgressCompleted: gameTime?.offlineProgressCompleted || false,
     realTime: gameTime?.lastRealTime,
     gameStartTime: gameTime?.gameStartTime,
+    triggerRentalProcessing,
   };
 };

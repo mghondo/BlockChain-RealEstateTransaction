@@ -9,6 +9,7 @@ interface CryptoPriceHook {
   refreshPrices: () => Promise<void>;
   convertCurrency: (amount: number, from: 'ETH' | 'USDC', to: 'ETH' | 'USDC') => number;
   calculateGasFees: (transactionType: 'simple' | 'investment' | 'conversion') => GasFeeEstimate | null;
+  getUsdValue: (amount: number, currency: 'ETH' | 'USDC') => number;
 }
 
 export const useCryptoPrices = (): CryptoPriceHook => {
@@ -73,6 +74,18 @@ export const useCryptoPrices = (): CryptoPriceHook => {
     return CryptoPriceService.calculateGasFees(transactionType, prices);
   }, [prices]);
 
+  const getUsdValue = useCallback((amount: number, currency: 'ETH' | 'USDC'): number => {
+    if (!prices) return amount;
+    
+    if (currency === 'ETH') {
+      return amount * prices.ethToUsd;
+    } else if (currency === 'USDC') {
+      return amount * prices.usdcToUsd;
+    }
+    
+    return amount;
+  }, [prices]);
+
   return {
     prices,
     loading,
@@ -81,5 +94,6 @@ export const useCryptoPrices = (): CryptoPriceHook => {
     refreshPrices,
     convertCurrency,
     calculateGasFees,
+    getUsdValue,
   };
 };

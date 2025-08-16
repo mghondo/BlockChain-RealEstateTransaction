@@ -1,4 +1,5 @@
 import React from 'react';
+import { Box, Chip, Typography } from '@mui/material';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
 
 interface PriceDisplayProps {
@@ -52,18 +53,62 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({ compact = false, cla
 
   if (compact) {
     return (
-      <div className={`flex items-center space-x-4 text-sm ${className}`}>
-        <div className="flex items-center space-x-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span className="text-gray-400">ETH:</span>
-          <span className="text-white font-medium">{formatPrice(prices.ethToUsd)}</span>
-        </div>
-        <div className="text-gray-500">|</div>
-        <div className="flex items-center space-x-1">
-          <span className="text-gray-400">Gas:</span>
-          <span className="text-white">{prices.gasPrice} gwei</span>
-        </div>
-      </div>
+      <Box 
+        sx={{ 
+          display: 'flex',
+          flexDirection: { xs: 'column', sm: 'row' },
+          alignItems: 'center',
+          gap: { xs: 0.5, sm: 2 },
+          mr: 1,
+          pl: { xs: 0, sm: '10px' }
+        }}
+      >
+        {/* ETH Price Column */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Box 
+            sx={{ 
+              width: 8, 
+              height: 8, 
+              backgroundColor: error ? 'error.main' : 'success.main',
+              borderRadius: '50%',
+              animation: error ? 'none' : 'priceFlicker 0.2s infinite',
+              '@keyframes priceFlicker': {
+                '0%, 50%': {
+                  backgroundColor: 'success.main'
+                },
+                '51%, 100%': {
+                  backgroundColor: '#2e7d58'
+                }
+              }
+            }} 
+          />
+          <Typography variant="caption" color="text.secondary">
+            ETH:
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 500, minWidth: 'fit-content' }}>
+            {formatPrice(prices.ethToUsd)}
+          </Typography>
+        </Box>
+
+        {/* Separator - hidden on mobile */}
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          sx={{ display: { xs: 'none', sm: 'block' } }}
+        >
+          •
+        </Typography>
+
+        {/* Gas Price Column */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, pr: { xs: 0, sm: '10px' } }}>
+          <Typography variant="caption" color="text.secondary">
+            Gas:
+          </Typography>
+          <Typography variant="body2" sx={{ fontWeight: 400 }}>
+            {prices.gasPrice} gwei
+          </Typography>
+        </Box>
+      </Box>
     );
   }
 
