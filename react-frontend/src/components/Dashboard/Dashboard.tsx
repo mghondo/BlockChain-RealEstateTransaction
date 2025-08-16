@@ -17,6 +17,7 @@ import {
 } from '@mui/icons-material';
 import { useWallet } from '../../hooks/useWallet';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
+import { PriceDisplay } from '../Currency/PriceDisplay';
 
 export default function Dashboard() {
   const { isConnected, account, balance, connectWallet } = useWallet();
@@ -87,6 +88,9 @@ export default function Dashboard() {
       <Typography variant="body1" color="text.secondary" gutterBottom>
         Welcome back! Here's your portfolio overview.
       </Typography>
+
+      {/* Crypto Price Display */}
+      <PriceDisplay className="mb-6" />
 
       {/* Portfolio Overview */}
       <Grid container spacing={3} sx={{ mb: 4 }}>

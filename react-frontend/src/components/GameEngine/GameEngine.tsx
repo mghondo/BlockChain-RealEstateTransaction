@@ -20,7 +20,7 @@ export const GameEngine: React.FC<GameEngineProps> = ({ children }) => {
   });
   
   // Initialize session tracking
-  useUserSession(account || '', gameTime);
+  useUserSession(account || '', gameTime || new Date());
   
   // Handle offline progress completion
   useEffect(() => {

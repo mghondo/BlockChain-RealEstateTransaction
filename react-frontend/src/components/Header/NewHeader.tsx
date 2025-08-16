@@ -24,6 +24,7 @@ import {
 import { useWallet } from '../../hooks/useWallet';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
 import { GameClock } from '../GameTime/GameClock';
+import { PriceDisplay } from '../Currency/PriceDisplay';
 
 export default function NewHeader() {
   const navigate = useNavigate();
@@ -149,6 +150,9 @@ export default function NewHeader() {
 
         {/* Game Clock */}
         <GameClock />
+
+        {/* Crypto Price Display */}
+        <PriceDisplay compact className="hidden md:flex mr-2" />
 
         {/* Network Status */}
         {isConnected && (
