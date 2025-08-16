@@ -55,6 +55,7 @@ export default function NewHeader() {
   const navigationItems = [
     { label: 'Home', path: '/' },
     { label: 'Properties', path: '/properties' },
+    { label: 'Marketplace', path: '/marketplace' },
     ...(isConnected ? [{ label: 'Dashboard', path: '/dashboard' }] : [])
   ];
 

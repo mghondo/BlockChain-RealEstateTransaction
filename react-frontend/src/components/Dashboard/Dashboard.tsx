@@ -20,6 +20,7 @@ import { useTokenBalance } from '../../hooks/useTokenBalance';
 import { PriceDisplay } from '../Currency/PriceDisplay';
 import { RentalIncomeTracker } from '../Income/RentalIncomeTracker';
 import { IncomeChart } from '../Income/IncomeChart';
+import { EscrowTracker } from '../Escrow/EscrowTracker';
 import { setupTestInvestments } from '../../utils/createSampleData';
 
 export default function Dashboard() {
@@ -121,6 +122,11 @@ export default function Dashboard() {
           <IncomeChart />
         </Grid>
       </Grid>
+
+      {/* Escrow Tracking Section */}
+      <Box sx={{ mb: 4 }}>
+        <EscrowTracker />
+      </Box>
 
       {/* Portfolio Overview */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
