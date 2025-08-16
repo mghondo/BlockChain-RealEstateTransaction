@@ -17,22 +17,23 @@ const typedImageInventory = imageInventory as ImageInventory;
 export const STATE_REGION_MAPPING: StateRegionMapping = {
   // Southeast
   'FL': 'Southeast', 'GA': 'Southeast', 'SC': 'Southeast', 'AL': 'Southeast', 'MS': 'Southeast',
-  'NC': 'Southeast', 'TN': 'Southeast', 'KY': 'Southeast', 'VA': 'Southeast', 'WV': 'Southeast',
-  'AR': 'Southeast', 'LA': 'Southeast',
+  'LA': 'Southeast', 
   
   // Southwest  
   'CA': 'Southwest', 'AZ': 'Southwest', 'NM': 'Southwest', 'NV': 'Southwest', 'TX': 'Southwest',
+  'HI': 'Southwest',
   
   // Northwest (Class A only - mountain apartments)
-  'WA': 'Northwest', 'OR': 'Northwest', 'ID': 'Northwest', 'MT': 'Northwest', 
-  'CO': 'Northwest', 'UT': 'Northwest', 'WY': 'Northwest', 'AK': 'Northwest',
+  'WA': 'Northwest', 'OR': 'Northwest', 'ID': 'Northwest', 'MT': 'Northwest', 'TN': 'Northwest',
+  'CO': 'Northwest', 'UT': 'Northwest', 'WY': 'Northwest', 'AK': 'Northwest', 'WV': 'Northwest',
   
   // Midwest/Northeast (all other states)
   'IL': 'Midwest', 'IN': 'Midwest', 'IA': 'Midwest', 'KS': 'Midwest', 'MI': 'Midwest',
   'MN': 'Midwest', 'MO': 'Midwest', 'NE': 'Midwest', 'ND': 'Midwest', 'OH': 'Midwest',
   'SD': 'Midwest', 'WI': 'Midwest', 'ME': 'Midwest', 'NH': 'Midwest', 'VT': 'Midwest',
   'MA': 'Midwest', 'RI': 'Midwest', 'CT': 'Midwest', 'NY': 'Midwest', 'NJ': 'Midwest',
-  'PA': 'Midwest', 'DE': 'Midwest', 'MD': 'Midwest', 'DC': 'Midwest', 'HI': 'Midwest'
+  'PA': 'Midwest', 'DE': 'Midwest', 'MD': 'Midwest', 'DC': 'Midwest', 
+  'NC': 'Midwest', 'KY': 'Midwest', 'VA': 'Midwest', 'AR': 'Midwest',
 };
 
 // Property class configurations

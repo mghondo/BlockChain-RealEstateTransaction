@@ -19,6 +19,7 @@ import Dashboard from './components/Dashboard/Dashboard';
 import Watchlist from './components/Watchlist/Watchlist';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { initializeFracEstate } from './utils/initializeFracEstate';
+import { GameEngine } from './components/GameEngine/GameEngine';
 
 // Create dark theme matching the crypto aesthetic
 const darkTheme = createTheme({
@@ -152,26 +153,28 @@ function App() {
       <CssBaseline />
       <ErrorBoundary>
         <Web3Provider>
-          <Router>
-            <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-              <NewHeader />
-              <Box component="main" sx={{ flexGrow: 1 }}>
-                <Routes>
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/properties" element={<FinalPropertyList />} />
-                  <Route path="/properties/simple" element={<SimplePropertyList />} />
-                  <Route path="/properties/full" element={<FracEstatePropertyList />} />
-                  <Route path="/property/:id" element={<FracEstatePropertyDetail />} />
-                  <Route path="/watchlist" element={<Watchlist />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  {/* Legacy routes for backward compatibility */}
-                  <Route path="/legacy/properties" element={<PropertyList />} />
-                  <Route path="/legacy/property/:id" element={<PropertyDetail />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
+          <GameEngine>
+            <Router>
+              <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+                <NewHeader />
+                <Box component="main" sx={{ flexGrow: 1 }}>
+                  <Routes>
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/properties" element={<FinalPropertyList />} />
+                    <Route path="/properties/simple" element={<SimplePropertyList />} />
+                    <Route path="/properties/full" element={<FracEstatePropertyList />} />
+                    <Route path="/property/:id" element={<FracEstatePropertyDetail />} />
+                    <Route path="/watchlist" element={<Watchlist />} />
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    {/* Legacy routes for backward compatibility */}
+                    <Route path="/legacy/properties" element={<PropertyList />} />
+                    <Route path="/legacy/property/:id" element={<PropertyDetail />} />
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </Box>
               </Box>
-            </Box>
-          </Router>
+            </Router>
+          </GameEngine>
         </Web3Provider>
       </ErrorBoundary>
     </ThemeProvider>

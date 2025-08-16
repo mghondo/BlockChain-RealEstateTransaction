@@ -23,6 +23,7 @@ import {
 } from '@mui/icons-material';
 import { useWallet } from '../../hooks/useWallet';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
+import { GameClock } from '../GameTime/GameClock';
 
 export default function NewHeader() {
   const navigate = useNavigate();
@@ -145,6 +146,9 @@ export default function NewHeader() {
             </Typography>
           ))}
         </Box>
+
+        {/* Game Clock */}
+        <GameClock />
 
         {/* Network Status */}
         {isConnected && (
