@@ -20,6 +20,8 @@ import Watchlist from './components/Watchlist/Watchlist';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { initializeFracEstate } from './utils/initializeFracEstate';
 import { GameEngine } from './components/GameEngine/GameEngine';
+import { usePropertyTimeline } from './hooks/usePropertyTimeline';
+import { testTimelineSystem } from './utils/testTimeline';
 
 // Create dark theme matching the crypto aesthetic
 const darkTheme = createTheme({
@@ -133,6 +135,9 @@ const darkTheme = createTheme({
 });
 
 function App() {
+  // Start background property timeline system
+  usePropertyTimeline();
+
   // Initialize FracEstate on app load
   React.useEffect(() => {
     const initialize = async () => {
@@ -140,6 +145,12 @@ function App() {
         console.log('🏠 Initializing FracEstate...');
         await initializeFracEstate();
         console.log('✅ FracEstate initialized successfully');
+        
+        // Test timeline system after initialization
+        setTimeout(() => {
+          testTimelineSystem().catch(console.error);
+        }, 3000);
+        
       } catch (error) {
         console.error('❌ Failed to initialize FracEstate:', error);
       }

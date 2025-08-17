@@ -1,73 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress } from '@mui/material';
-import { propertyService } from '../../services/firebaseService';
-import { Property } from '../../types/property';
+import { Box, Typography, Button, CircularProgress } from '@mui/material';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 
 export default function DebugPropertyList() {
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadProperties = async () => {
+  const loadAllProperties = async () => {
     try {
-      console.log('🔄 Loading properties...');
       setLoading(true);
       setError(null);
-      
-      // Direct Firebase call to bypass service layer issues
-      const { collection, getDocs } = await import('firebase/firestore');
-      const { db } = await import('../../firebase/config');
+      console.log('🔍 Debug: Loading ALL properties from database...');
       
       const snapshot = await getDocs(collection(db, 'properties'));
-      const props = snapshot.docs.map(doc => ({
+      const docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })) as Property[];
+      }));
       
-      console.log('📦 Loaded properties:', props.length, props);
+      console.log(`📊 Debug: Found ${docs.length} total properties in database`);
+      console.log('Property statuses:', docs.map(p => ({ id: p.id, status: p.status, address: p.address })));
       
-      setProperties(props);
+      setProperties(docs);
       setLoading(false);
     } catch (err) {
-      console.error('❌ Error loading properties:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      console.error('❌ Debug Error:', err);
+      setError('Failed to load properties');
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadProperties();
-  }, []);
+  const generateTestProperty = async () => {
+    try {
+      console.log('🏗️ Generating test property...');
+      const { generateProperty } = await import('../../utils/propertyGenerator');
+      const { addDoc, collection } = await import('firebase/firestore');
+      
+      const newProperty = generateProperty();
+      console.log('Generated property:', newProperty);
+      
+      await addDoc(collection(db, 'properties'), newProperty);
+      console.log('✅ Test property added to database');
+      
+      // Reload properties
+      await loadAllProperties();
+    } catch (err) {
+      console.error('❌ Error generating test property:', err);
+    }
+  };
 
-  console.log('🔍 Component state:', { 
-    propertiesCount: properties.length, 
-    loading, 
-    error 
-  });
+  useEffect(() => {
+    loadAllProperties();
+  }, []);
 
   if (loading) {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', p: 4 }}>
         <CircularProgress size={60} />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Loading properties...
-        </Typography>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box sx={{ p: 3 }}>
-        <Typography variant="h4" color="error" gutterBottom>
-          Error Loading Properties
-        </Typography>
-        <Typography variant="body1" paragraph>
-          {error}
-        </Typography>
-        <Button variant="contained" onClick={loadProperties}>
-          Retry
-        </Button>
+        <Typography variant="h6" sx={{ mt: 2 }}>Loading properties...</Typography>
       </Box>
     );
   }
@@ -75,81 +67,66 @@ export default function DebugPropertyList() {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
-        Debug Property List
+        🔍 Property Database Debug
       </Typography>
       
+      <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+        <Button variant="contained" onClick={loadAllProperties}>
+          Refresh All Properties
+        </Button>
+        <Button variant="outlined" onClick={generateTestProperty}>
+          Generate Test Property
+        </Button>
+      </Box>
+
+      {error && (
+        <Typography variant="h6" color="error" gutterBottom>
+          Error: {error}
+        </Typography>
+      )}
+
       <Typography variant="h6" gutterBottom>
-        Found {properties.length} properties
+        Total Properties in Database: {properties.length}
       </Typography>
-      
-      <Button 
-        variant="contained" 
-        onClick={loadProperties} 
-        sx={{ mb: 3 }}
-      >
-        Refresh Properties
-      </Button>
 
       {properties.length === 0 ? (
-        <Card>
-          <CardContent>
-            <Typography variant="h6" gutterBottom>
-              No Properties Found
-            </Typography>
-            <Typography variant="body1">
-              Try running fracEstate.initialize() in the console first.
-            </Typography>
-          </CardContent>
-        </Card>
+        <Box sx={{ p: 3, textAlign: 'center', border: '2px dashed gray', borderRadius: 2 }}>
+          <Typography variant="h6" gutterBottom>
+            No Properties Found
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            The properties collection appears to be empty. Click "Generate Test Property" to add one.
+          </Typography>
+        </Box>
       ) : (
-        <Grid container spacing={2}>
-          {properties.slice(0, 6).map((property) => (
-            <Grid item xs={12} sm={6} md={4} key={property.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    ${property.price.toLocaleString()}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    {property.address}
-                  </Typography>
-                  <Typography variant="body2" gutterBottom>
-                    {property.city}, {property.state}
-                  </Typography>
-                  <Typography variant="body2" gutterBottom>
-                    Class {property.class} • {property.status}
-                  </Typography>
-                  <Typography variant="body2">
-                    {property.bedrooms}bd • {property.bathrooms}ba • {property.sqft} sqft
-                  </Typography>
-                  {property.imageUrl && (
-                    <img 
-                      src={property.imageUrl} 
-                      alt="Property" 
-                      style={{ 
-                        width: '100%', 
-                        height: 120, 
-                        objectFit: 'cover', 
-                        marginTop: 8,
-                        borderRadius: 4
-                      }}
-                      onError={(e) => {
-                        console.log('Image failed to load:', property.imageUrl);
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
+        <Box sx={{ mt: 2 }}>
+          {properties.map((property, index) => (
+            <Box key={property.id || index} sx={{ 
+              p: 2, 
+              mb: 2, 
+              border: '1px solid gray', 
+              borderRadius: 1,
+              backgroundColor: 
+                property.status === 'for-sale' ? 'rgba(0, 255, 0, 0.1)' :
+                property.status === 'pending' ? 'rgba(255, 165, 0, 0.1)' :
+                property.status === 'sold' ? 'rgba(255, 0, 0, 0.1)' : 'transparent'
+            }}>
+              <Typography variant="h6">
+                {property.address || 'Unknown Address'} - {property.city}, {property.state}
+              </Typography>
+              <Typography variant="body2">
+                <strong>Status:</strong> {property.status || 'Unknown'} | 
+                <strong> Class:</strong> {property.class || 'Unknown'} | 
+                <strong> Price:</strong> ${(property.price || 0).toLocaleString()}
+              </Typography>
+              {property.contractTime && (
+                <Typography variant="caption" color="text.secondary">
+                  Contract Time: {new Date(property.contractTime).toLocaleString()}
+                </Typography>
+              )}
+            </Box>
           ))}
-        </Grid>
-      )}
-      
-      {properties.length > 6 && (
-        <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
-          Showing first 6 of {properties.length} properties
-        </Typography>
+        </Box>
       )}
     </Box>
   );

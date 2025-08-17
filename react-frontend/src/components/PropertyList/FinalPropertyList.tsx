@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress, Chip } from '@mui/material';
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { Box, Typography, Card, CardContent, Button, Grid, CircularProgress } from '@mui/material';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
-import { PropertyContractService } from '../../services/propertyContractService';
 
 export default function FinalPropertyList() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -13,21 +12,15 @@ export default function FinalPropertyList() {
     try {
       setLoading(true);
       setError(null);
-      console.log('🔄 Loading active properties for display...');
+      console.log('🔄 Loading properties for display...');
       
-      // Only load properties that are for-sale or pending (not sold)
-      const activePropertiesQuery = query(
-        collection(db, 'properties'),
-        where('status', 'in', ['for-sale', 'pending'])
-      );
-      
-      const snapshot = await getDocs(activePropertiesQuery);
+      const snapshot = await getDocs(collection(db, 'properties'));
       const docs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       
-      console.log(`📦 Loaded ${docs.length} active properties for display`);
+      console.log(`📦 Loaded ${docs.length} properties for display`);
       setProperties(docs);
       setLoading(false);
     } catch (err) {
@@ -39,13 +32,6 @@ export default function FinalPropertyList() {
 
   useEffect(() => {
     loadProperties();
-    
-    // Auto-refresh properties every 30 seconds to show real-time updates
-    const interval = setInterval(() => {
-      loadProperties();
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, []);
 
   if (loading) {
@@ -144,21 +130,13 @@ export default function FinalPropertyList() {
                     Class {property.class || '?'}
                   </Typography>
                   
-                  <Chip 
-                    size="small"
-                    label={
-                      property.status === 'for-sale' ? 'For Sale' :
-                      property.status === 'pending' ? 'Pending Sale' :
-                      property.status === 'sold' ? 'Sold' :
-                      property.status || 'Unknown'
-                    }
-                    color={
-                      property.status === 'for-sale' ? 'success' :
-                      property.status === 'pending' ? 'warning' :
-                      property.status === 'sold' ? 'error' :
-                      'default'
-                    }
-                  />
+                  <Typography variant="body2" color={
+                    property.status === 'available' ? 'success.main' :
+                    property.status === 'ending_soon' ? 'warning.main' :
+                    'error.main'
+                  }>
+                    {property.status || 'unknown'}
+                  </Typography>
                 </Box>
                 
                 {/* Beds/Baths/Sqft */}
@@ -171,36 +149,6 @@ export default function FinalPropertyList() {
                   Built {property.yearBuilt || 'Unknown'}
                 </Typography>
 
-                {/* Contract Timing */}
-                {property.status === 'for-sale' && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      {PropertyContractService.getContractTimingDisplay(property.class)}
-                    </Typography>
-                    {property.contractTime && (
-                      <Typography variant="caption" color="warning.main" display="block">
-                        {PropertyContractService.getTimeUntilContract(new Date(property.contractTime))}
-                      </Typography>
-                    )}
-                  </Box>
-                )}
-                
-                {property.status === 'pending' && property.pendingStartTime && (
-                  <Box sx={{ mt: 1 }}>
-                    <Typography variant="caption" color="warning.main" display="block">
-                      ⏳ {PropertyContractService.getPendingTimeRemaining(new Date(property.pendingStartTime.seconds * 1000))}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" display="block">
-                      Sale in progress...
-                    </Typography>
-                  </Box>
-                )}
-                
-                {property.status === 'sold' && (
-                  <Typography variant="caption" color="error.main" display="block" sx={{ mt: 1 }}>
-                    ✅ Property Sold
-                  </Typography>
-                )}
                 
                 {/* Rental Yield */}
                 {property.rentalYield && (

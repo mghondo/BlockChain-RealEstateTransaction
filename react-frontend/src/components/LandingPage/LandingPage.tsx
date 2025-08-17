@@ -21,6 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useMockWallet } from '../../hooks/useMockWallet';
 import { MockWallet } from '../MockWallet/MockWallet';
+import { TimelineDebug } from '../Debug/TimelineDebug';
 import type { PropertyClass } from '../../types/property';
 import imageInventory from '../../utils/imageInventory.json';
 
@@ -353,66 +354,6 @@ export default function LandingPage() {
         </Container>
       </Box>
 
-      {/* Features Section */}
-      <Container maxWidth="lg">
-        <Box sx={{ py: { xs: 8, md: 12 } }}>
-          <Typography
-            variant="h3"
-            sx={{
-              textAlign: 'center',
-              mb: 2,
-              fontWeight: 600
-            }}
-          >
-            Why Choose FracEstate?
-          </Typography>
-          
-          <Typography
-            variant="h6"
-            sx={{
-              textAlign: 'center',
-              mb: 8,
-              color: 'text.secondary',
-              maxWidth: 600,
-              mx: 'auto'
-            }}
-          >
-            Experience the future of real estate investment with cutting-edge blockchain technology
-          </Typography>
-
-          <Grid container spacing={4}>
-            {features.map((feature, index) => (
-              <Grid item xs={12} md={6} lg={4} key={index}>
-                <Card
-                  sx={{
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    p: 2,
-                    transition: 'transform 0.3s ease-in-out',
-                    '&:hover': {
-                      transform: 'translateY(-8px)'
-                    }
-                  }}
-                >
-                  <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
-                    <Box sx={{ color: 'primary.main', mb: 2 }}>
-                      {feature.icon}
-                    </Box>
-                    <Typography variant="h6" gutterBottom>
-                      {feature.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {feature.description}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
-          </Grid>
-        </Box>
-      </Container>
-
       {/* How It Works Section */}
       <Box sx={{ py: { xs: 8, md: 12 }, backgroundColor: 'rgba(255, 255, 255, 0.02)' }}>
         <Container maxWidth="lg">
@@ -500,6 +441,68 @@ export default function LandingPage() {
         </Container>
       </Box>
 
+      {/* Features Section */}
+      <Container maxWidth="lg">
+        <Box sx={{ py: { xs: 8, md: 12 } }}>
+          <Typography
+            variant="h3"
+            sx={{
+              textAlign: 'center',
+              mb: 2,
+              fontWeight: 600
+            }}
+          >
+            Why Choose FracEstate?
+          </Typography>
+          
+          <Typography
+            variant="h6"
+            sx={{
+              textAlign: 'center',
+              mb: 8,
+              color: 'text.secondary',
+              maxWidth: 600,
+              mx: 'auto'
+            }}
+          >
+            Experience the future of real estate investment with cutting-edge blockchain technology
+          </Typography>
+
+          <Grid container spacing={4}>
+            {features.map((feature, index) => (
+              <Grid item xs={12} md={6} lg={4} key={index}>
+                <Card
+                  sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    p: 2,
+                    transition: 'transform 0.3s ease-in-out',
+                    '&:hover': {
+                      transform: 'translateY(-8px)'
+                    }
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
+                    <Box sx={{ color: 'primary.main', mb: 2 }}>
+                      {feature.icon}
+                    </Box>
+                    <Typography variant="h6" gutterBottom>
+                      {feature.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {feature.description}
+                    </Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </Box>
+      </Container>
+
+
+
       {/* CTA Section */}
       <Container maxWidth="lg">
         <Box
@@ -558,6 +561,9 @@ export default function LandingPage() {
           )}
         </Box>
       </Container>
+
+      {/* Development Debug Panel */}
+      {process.env.NODE_ENV === 'development' && <TimelineDebug />}
 
       {/* Mock Wallet Modal */}
       <MockWallet

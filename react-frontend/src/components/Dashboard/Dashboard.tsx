@@ -17,8 +17,6 @@ import {
 } from '@mui/icons-material';
 import { useWallet } from '../../hooks/useWallet';
 import { useTokenBalance } from '../../hooks/useTokenBalance';
-import { useGameTime } from '../../hooks/useGameTime';
-import { usePropertyContracts } from '../../hooks/usePropertyContracts';
 import { PriceDisplay } from '../Currency/PriceDisplay';
 import { RentalIncomeTracker } from '../Income/RentalIncomeTracker';
 import { IncomeChart } from '../Income/IncomeChart';
@@ -29,13 +27,6 @@ import { setupTestInvestments } from '../../utils/createSampleData';
 export default function Dashboard() {
   const { isConnected, account, balance, connectWallet } = useWallet();
   const { tokenBalances } = useTokenBalance();
-  const { gameTime, gameStartTime } = useGameTime(account || '');
-  const { 
-    contractedProperties, 
-    isProcessing, 
-    triggerContractProcessing,
-    clearContractedProperties 
-  } = usePropertyContracts(gameTime, gameStartTime);
 
   if (!isConnected) {
     return (
@@ -95,37 +86,6 @@ export default function Dashboard() {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
-      {/* Property Contract Notifications */}
-      {contractedProperties.length > 0 && (
-        <Card sx={{ mb: 3, backgroundColor: 'rgba(76, 175, 80, 0.1)', border: '1px solid rgba(76, 175, 80, 0.3)' }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box>
-                <Typography variant="h6" color="success.main" gutterBottom>
-                  ⏳ Properties Pending Sale
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {contractedProperties.length} properties are now pending (will be sold in 10 minutes):
-                </Typography>
-                {contractedProperties.map((property, index) => (
-                  <Typography key={index} variant="body2" sx={{ mt: 1 }}>
-                    • {property.title || property.address} (Class {property.class})
-                  </Typography>
-                ))}
-              </Box>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                onClick={clearContractedProperties}
-                color="success"
-              >
-                Dismiss
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
-      )}
-
       <Typography variant="h4" gutterBottom>
         Investment Dashboard
       </Typography>
