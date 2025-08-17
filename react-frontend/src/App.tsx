@@ -17,7 +17,6 @@ import PropertyDetail from './components/PropertyDetail/PropertyDetail';
 import FracEstatePropertyDetail from './components/PropertyDetail/FracEstatePropertyDetail';
 import Dashboard from './components/Dashboard/Dashboard';
 import Watchlist from './components/Watchlist/Watchlist';
-import { Marketplace } from './pages/Marketplace';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { initializeFracEstate } from './utils/initializeFracEstate';
 import { GameEngine } from './components/GameEngine/GameEngine';
@@ -165,7 +164,6 @@ function App() {
                     <Route path="/properties/simple" element={<SimplePropertyList />} />
                     <Route path="/properties/full" element={<FracEstatePropertyList />} />
                     <Route path="/property/:id" element={<FracEstatePropertyDetail />} />
-                    <Route path="/marketplace" element={<Marketplace />} />
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="/dashboard" element={<Dashboard />} />
                     {/* Legacy routes for backward compatibility */}

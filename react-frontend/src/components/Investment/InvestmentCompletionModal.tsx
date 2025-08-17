@@ -35,6 +35,7 @@ export const InvestmentCompletionModal: React.FC<InvestmentCompletionModalProps>
   const [totalShares, setTotalShares] = useState(userShares);
   const [currentInvestorIndex, setCurrentInvestorIndex] = useState(-1);
   const [error, setError] = useState<string | null>(null);
+  const [startingEscrow, setStartingEscrow] = useState(false);
 
   // Initialize investment completion process
   useEffect(() => {
@@ -117,8 +118,11 @@ export const InvestmentCompletionModal: React.FC<InvestmentCompletionModalProps>
         userInvestment
       );
       
-      // Initiate escrow process
+      setPhase('complete');
+      
+      // Start escrow process
       if (user?.uid) {
+        setStartingEscrow(true);
         await EscrowService.initiateEscrow(
           propertyId,
           user.uid,
@@ -127,18 +131,17 @@ export const InvestmentCompletionModal: React.FC<InvestmentCompletionModalProps>
           propertyClass
         );
         console.log('🏦 Escrow process initiated for property', propertyId);
+        setStartingEscrow(false);
       }
-      
-      setPhase('complete');
       
       // Auto-close after showing success
       setTimeout(() => {
         onComplete(true);
-      }, 3000);
+      }, 4000); // Extended time to explain escrow
       
     } catch (err) {
       console.error('Error saving investment:', err);
-      setError('Investment completed but failed to save. Please contact support.');
+      setError('Investment completed but escrow initiation failed. Please contact support.');
       setPhase('error');
     }
   };
@@ -332,13 +335,23 @@ export const InvestmentCompletionModal: React.FC<InvestmentCompletionModalProps>
               <div className="text-gray-400 mb-4">
                 You now own {userShares} shares ({((userShares / 100) * 100).toFixed(1)}%) of this property
               </div>
+              
+              {startingEscrow && (
+                <div className="bg-blue-900 border border-blue-600 rounded p-4 mb-4">
+                  <div className="text-blue-400 font-semibold mb-2">Starting Escrow Process...</div>
+                  <div className="text-sm text-blue-300">
+                    Your investment is entering the approval process
+                  </div>
+                </div>
+              )}
+              
               <div className="bg-green-900 border border-green-600 rounded p-4">
                 <div className="text-green-400 font-semibold mb-2">Next Steps:</div>
                 <ul className="text-sm text-green-300 text-left space-y-1">
-                  <li>• Property will go through inspection and approval process</li>
-                  <li>• You'll earn 2% annual interest during escrow</li>
-                  <li>• Rental income starts after successful completion</li>
-                  <li>• Track progress in your dashboard escrow section</li>
+                  <li>• Your investment is now in escrow for inspection and approval</li>
+                  <li>• Track progress on your dashboard (90% approval rate)</li>
+                  <li>• Earn 2% interest if deals fail for any reason</li>
+                  <li>• Successful approvals add shares to your rental portfolio</li>
                 </ul>
               </div>
             </div>

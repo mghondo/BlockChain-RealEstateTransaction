@@ -36,29 +36,16 @@ export const useGameTime = (userId: string) => {
     return new Date(baseGameTime.getTime() + gameElapsedMs);
   };
   
-  const processOfflineProgress = async (lastSeenGameTime: Date, currentGameTime: Date): Promise<OfflineProgress> => {
-    const now = new Date();
-    const offlineRealTime = now.getTime() - (currentGameTime.getTime() / TIME_MULTIPLIER);
-    const offlineGameTime = currentGameTime.getTime() - lastSeenGameTime.getTime();
-    const gameMonthsElapsed = Math.floor(offlineGameTime / (1000 * 60 * 60 * 24 * 30)); // Approx game months
-    
-    console.log(`🕐 Processing offline progress: ${gameMonthsElapsed} game months elapsed`);
+  const processOfflineProgress = async (lastSeenGameTime: Date): Promise<OfflineProgress> => {
+    console.log(`🕐 Processing offline progress from: ${lastSeenGameTime}`);
     
     // Use background calculation service
     const calculationResult = await BackgroundCalculationService.processOfflineProgress(
       userId,
-      lastSeenGameTime,
-      currentGameTime
+      lastSeenGameTime
     );
     
-    return {
-      realTimeOffline: offlineRealTime,
-      gameTimeElapsed: offlineGameTime,
-      gameMonthsElapsed: calculationResult.monthsProcessed,
-      rentalIncome: calculationResult.rentalIncomeGenerated,
-      appreciation: calculationResult.totalValueChange,
-      newProperties: [], // TODO: Calculate new properties available
-    };
+    return calculationResult;
   };
   
   // Initialize or resume game time
@@ -89,7 +76,7 @@ export const useGameTime = (userId: string) => {
             }));
             
             // Process offline progress
-            const offlineProgress = await processOfflineProgress(lastGameTime, calculateGameTime(now, lastGameTime, lastRealTime));
+            const offlineProgress = await processOfflineProgress(lastGameTime);
             
             // Update game time to current
             const newGameTime = calculateGameTime(now, lastGameTime, lastRealTime);

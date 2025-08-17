@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type PropertyClass = 'A' | 'B' | 'C';
 
-export type PropertyStatus = 'available' | 'ending_soon' | 'sold_out';
+export type PropertyStatus = 'available' | 'ending_soon' | 'sold_out' | 'for-sale' | 'pending' | 'sold';
 
 export type PropertyRegion = 'Midwest' | 'Southwest' | 'Southeast' | 'Northwest' | 'Anywhere';
 
@@ -40,6 +40,12 @@ export interface Property {
   totalShares?: number;
   availableShares?: number;
   sharePrice?: number;
+  // Contract-related fields
+  contractTime?: Date;
+  contractTimeInitialized?: Timestamp;
+  pendingStartTime?: Timestamp;
+  gameTimeWhenPending?: Date;
+  replacementScheduled?: boolean;
 }
 
 export interface PropertyFilters {

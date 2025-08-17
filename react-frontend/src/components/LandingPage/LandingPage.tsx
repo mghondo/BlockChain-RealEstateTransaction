@@ -19,7 +19,8 @@ import {
   VerifiedUser
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { useWallet } from '../../hooks/useWallet';
+import { useMockWallet } from '../../hooks/useMockWallet';
+import { MockWallet } from '../MockWallet/MockWallet';
 import type { PropertyClass } from '../../types/property';
 import imageInventory from '../../utils/imageInventory.json';
 
@@ -111,14 +112,20 @@ const getRandomBackgroundImages = (): BackgroundImage[] => {
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { isConnected, connectWallet } = useWallet();
+  const { isConnected, restoreWallet, connectWallet } = useMockWallet();
   const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   // Generate random background images on component mount
   useEffect(() => {
     setBackgroundImages(getRandomBackgroundImages());
   }, []);
+
+  // Restore wallet on component mount
+  useEffect(() => {
+    restoreWallet();
+  }, [restoreWallet]);
 
   // Auto-advance slideshow every 5 seconds
   useEffect(() => {
@@ -131,16 +138,17 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, [backgroundImages.length]);
 
-  const handleGetStarted = async () => {
+  const handleGetStarted = () => {
     if (!isConnected) {
-      try {
-        await connectWallet();
-      } catch (error) {
-        console.error('Failed to connect wallet:', error);
-      }
+      setShowWalletModal(true);
     } else {
       navigate('/properties');
     }
+  };
+
+  const handleWalletConnect = (walletData: any) => {
+    connectWallet(walletData);
+    setShowWalletModal(false);
   };
 
   const handleViewProperties = () => {
@@ -285,19 +293,21 @@ export default function LandingPage() {
 
 
           <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', justifyContent: 'center' }}>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={handleGetStarted}
-              sx={{
-                px: 4,
-                py: 1.5,
-                fontSize: '1.1rem',
-                borderRadius: 2
-              }}
-            >
-              {isConnected ? 'Explore Properties' : 'Connect Wallet'}
-            </Button>
+            {!isConnected && (
+              <Button
+                variant="contained"
+                size="large"
+                onClick={handleGetStarted}
+                sx={{
+                  px: 4,
+                  py: 1.5,
+                  fontSize: '1.1rem',
+                  borderRadius: 2
+                }}
+              >
+                Connect Wallet
+              </Button>
+            )}
             
             <Button
               variant="outlined"
@@ -517,21 +527,44 @@ export default function LandingPage() {
             Join thousands of investors already earning passive income through fractional real estate
           </Typography>
 
-          <Button
-            variant="contained"
-            size="large"
-            onClick={handleGetStarted}
-            sx={{
-              px: 6,
-              py: 2,
-              fontSize: '1.2rem',
-              borderRadius: 2
-            }}
-          >
-            {isConnected ? 'Start Investing Now' : 'Connect Wallet to Begin'}
-          </Button>
+          {!isConnected ? (
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleGetStarted}
+              sx={{
+                px: 6,
+                py: 2,
+                fontSize: '1.2rem',
+                borderRadius: 2
+              }}
+            >
+              Connect Wallet to Begin
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              size="large"
+              onClick={handleGetStarted}
+              sx={{
+                px: 6,
+                py: 2,
+                fontSize: '1.2rem',
+                borderRadius: 2
+              }}
+            >
+              Start Investing Now
+            </Button>
+          )}
         </Box>
       </Container>
+
+      {/* Mock Wallet Modal */}
+      <MockWallet
+        open={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onConnect={handleWalletConnect}
+      />
     </Box>
   );
 }

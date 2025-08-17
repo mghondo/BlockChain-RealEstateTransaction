@@ -297,7 +297,7 @@ export const generateProperty = async (): Promise<Omit<Property, 'id'>> => {
     currentValue: propertyDetails.price, // Initially equal to market value
     imageUrl,
     selloutTime,
-    status: 'available',
+    status: 'for-sale',
     createdAt: Timestamp.now(),
     mockInvestors,
     description: `Beautiful ${propertyType.toLowerCase()} located in ${targetArea.toLowerCase()}. Built in ${propertyDetails.yearBuilt}, this property offers excellent rental yield potential at ${(propertyDetails.rentalYield * 100).toFixed(1)}% annually.`,

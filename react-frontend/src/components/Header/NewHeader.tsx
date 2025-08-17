@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   AppBar,
@@ -18,11 +18,11 @@ import {
   AccountBalanceWallet,
   KeyboardArrowDown,
   ContentCopy,
-  Launch,
   Close
 } from '@mui/icons-material';
-import { useWallet } from '../../hooks/useWallet';
-import { useTokenBalance } from '../../hooks/useTokenBalance';
+import { useMockWallet } from '../../hooks/useMockWallet';
+import { useCryptoPrices } from '../../hooks/useCryptoPrices';
+import { MockWallet } from '../MockWallet/MockWallet';
 import { GameClock } from '../GameTime/GameClock';
 import { PriceDisplay } from '../Currency/PriceDisplay';
 
@@ -32,88 +32,57 @@ export default function NewHeader() {
   
   const {
     isConnected,
-    account,
-    balance,
-    chainId,
+    address,
+    ethBalance,
     isLoading,
-    error,
-    currentNetwork,
-    supportedNetworks,
     connectWallet,
     disconnectWallet,
-    switchNetwork,
     formatAddress,
-    isSupportedNetwork,
-    isMetaMaskInstalled
-  } = useWallet();
+    formatBalance,
+    restoreWallet
+  } = useMockWallet();
 
-  const { tokenBalances, getTokenBalance } = useTokenBalance();
+  const { prices } = useCryptoPrices();
 
-  const [networkMenuAnchor, setNetworkMenuAnchor] = useState<null | HTMLElement>(null);
   const [walletMenuAnchor, setWalletMenuAnchor] = useState<null | HTMLElement>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   const navigationItems = [
     { label: 'Home', path: '/' },
     { label: 'Properties', path: '/properties' },
-    { label: 'Marketplace', path: '/marketplace' },
     ...(isConnected ? [{ label: 'Dashboard', path: '/dashboard' }] : [])
   ];
+
+  // Restore wallet on component mount
+  useEffect(() => {
+    restoreWallet();
+  }, [restoreWallet]);
 
   const handleNavClick = (path: string) => {
     console.log('🚀 Navigation clicked for path:', path);
     navigate(path);
   };
 
-  const handleConnectWallet = async () => {
-    try {
-      await connectWallet();
-    } catch (error) {
-      console.error('Failed to connect wallet:', error);
-    }
+  const handleConnectWallet = () => {
+    setShowWalletModal(true);
   };
 
-  const handleNetworkSwitch = async (chainId: number) => {
-    try {
-      await switchNetwork(chainId);
-      setNetworkMenuAnchor(null);
-    } catch (error) {
-      console.error('Failed to switch network:', error);
-    }
+  const handleWalletConnect = (walletData: any) => {
+    connectWallet(walletData);
+    setShowWalletModal(false);
   };
 
   const handleCopyAddress = () => {
-    if (account) {
-      navigator.clipboard.writeText(account);
+    if (address) {
+      navigator.clipboard.writeText(address);
       setWalletMenuAnchor(null);
     }
   };
 
-  const openNetworkExplorer = () => {
-    if (account && currentNetwork) {
-      const explorerUrl = `${currentNetwork.blockExplorerUrl}/address/${account}`;
-      window.open(explorerUrl, '_blank');
-      setWalletMenuAnchor(null);
-    }
+  const handleDisconnect = () => {
+    disconnectWallet();
+    setWalletMenuAnchor(null);
   };
-
-  const formatBalance = (balance: string): string => {
-    const num = parseFloat(balance);
-    return num.toFixed(4);
-  };
-
-  const getNetworkStatusColor = () => {
-    if (!isConnected) return 'default';
-    return isSupportedNetwork(chainId || 0) ? 'success' : 'error';
-  };
-
-  const getNetworkStatusText = () => {
-    if (!isConnected) return 'Disconnected';
-    return isSupportedNetwork(chainId || 0) ? 'Supported' : 'Unsupported';
-  };
-
-  const usdcBalance = getTokenBalance('USDC');
-  const mainnetNetworks = supportedNetworks.filter(n => !n.isTestnet);
-  const testnetNetworks = supportedNetworks.filter(n => n.isTestnet);
 
   return (
     <AppBar position="static" sx={{ backgroundColor: 'background.paper', color: 'text.primary' }}>
@@ -155,55 +124,39 @@ export default function NewHeader() {
         {/* Crypto Price Display */}
         <PriceDisplay compact className="hidden md:flex mr-2" />
 
-        {/* Network Status */}
-        {isConnected && (
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={(e) => setNetworkMenuAnchor(e.currentTarget)}
-              endIcon={<KeyboardArrowDown />}
-              sx={{ mr: 1 }}
-            >
-              {currentNetwork?.displayName || 'Unknown Network'}
-            </Button>
-            <Chip
-              label={getNetworkStatusText()}
-              color={getNetworkStatusColor()}
-              size="small"
-            />
-          </Box>
-        )}
-
         {/* Balance Display */}
         {isConnected && (
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
             <Chip
-              label={`${formatBalance(balance)} ${currentNetwork?.symbol || 'ETH'}`}
+              label={`${formatBalance(ethBalance)} ETH`}
               variant="outlined"
               size="small"
+              color="primary"
               sx={{ mr: 1 }}
             />
-            {usdcBalance && (
+            {prices && (
               <Chip
-                label={`${usdcBalance.formatted} USDC`}
+                label={`≈ $${(ethBalance * prices.ethToUsd).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                 variant="outlined"
                 size="small"
+                color="success"
               />
             )}
           </Box>
         )}
 
+        {/* Game Mode Badge */}
+        {/* {isConnected && (
+          <Chip
+            label="🎮 Game Mode"
+            color="secondary"
+            size="small"
+            sx={{ mr: 2 }}
+          />
+        )} */}
+
         {/* Wallet Connection */}
-        {!isMetaMaskInstalled ? (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => window.open('https://metamask.io/', '_blank')}
-          >
-            Install MetaMask
-          </Button>
-        ) : !isConnected ? (
+        {!isConnected ? (
           <Button
             variant="contained"
             color="primary"
@@ -211,7 +164,7 @@ export default function NewHeader() {
             disabled={isLoading}
             startIcon={isLoading ? <CircularProgress size={16} /> : <AccountBalanceWallet />}
           >
-            {isLoading ? 'Connecting...' : 'Connect Wallet'}
+            {isLoading ? 'Connecting...' : 'Connect Test Wallet'}
           </Button>
         ) : (
           <Button
@@ -220,69 +173,10 @@ export default function NewHeader() {
             startIcon={<AccountBalanceWallet />}
             endIcon={<KeyboardArrowDown />}
           >
-            {formatAddress(account || '')}
+            View Wallet
           </Button>
         )}
-
-        {/* Error Display */}
-        {error && (
-          <Chip
-            label={error}
-            color="error"
-            size="small"
-            sx={{ ml: 1 }}
-          />
-        )}
       </Toolbar>
-
-      {/* Network Selection Menu */}
-      <Menu
-        anchorEl={networkMenuAnchor}
-        open={Boolean(networkMenuAnchor)}
-        onClose={() => setNetworkMenuAnchor(null)}
-        PaperProps={{
-          sx: { minWidth: 250 }
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
-          Mainnet Networks
-        </Typography>
-        {mainnetNetworks.map((network) => (
-          <MenuItem
-            key={network.chainId}
-            onClick={() => handleNetworkSwitch(network.chainId)}
-            selected={network.chainId === chainId}
-          >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-              <Typography>{network.displayName}</Typography>
-              <Typography variant="body2" color="text.secondary">
-                {network.symbol}
-              </Typography>
-            </Box>
-          </MenuItem>
-        ))}
-        
-        {testnetNetworks.length > 0 && [
-          <Divider key="divider" />,
-          <Typography key="header" variant="subtitle2" sx={{ px: 2, py: 1, fontWeight: 'bold' }}>
-            Testnet Networks
-          </Typography>,
-          ...testnetNetworks.map((network) => (
-            <MenuItem
-              key={network.chainId}
-              onClick={() => handleNetworkSwitch(network.chainId)}
-              selected={network.chainId === chainId}
-            >
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                <Typography>{network.displayName}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {network.symbol}
-                </Typography>
-              </Box>
-            </MenuItem>
-          ))
-        ]}
-      </Menu>
 
       {/* Wallet Menu */}
       <Menu
@@ -290,15 +184,19 @@ export default function NewHeader() {
         open={Boolean(walletMenuAnchor)}
         onClose={() => setWalletMenuAnchor(null)}
         PaperProps={{
-          sx: { minWidth: 300 }
+          sx: { minWidth: 320 }
         }}
       >
         <Box sx={{ p: 2 }}>
-          <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Connected Account
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Typography variant="subtitle2" color="text.secondary">
+              🎮 Test Wallet Connected
+            </Typography>
+            <Chip label="Simulation" color="secondary" size="small" />
+          </Box>
+          
           <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
-            {account}
+            {address}
           </Typography>
           <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
             <Tooltip title="Copy Address">
@@ -306,35 +204,41 @@ export default function NewHeader() {
                 <ContentCopy fontSize="small" />
               </IconButton>
             </Tooltip>
-            <Tooltip title="View on Explorer">
-              <IconButton size="small" onClick={openNetworkExplorer}>
-                <Launch fontSize="small" />
-              </IconButton>
-            </Tooltip>
           </Box>
           
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Balances
+            Test Balances
           </Typography>
           <Box sx={{ mb: 2 }}>
-            <Typography variant="body2">
-              {formatBalance(balance)} {currentNetwork?.symbol || 'ETH'}
+            <Typography variant="body2" color="primary.main">
+              💎 {formatBalance(ethBalance)} ETH
             </Typography>
-            {tokenBalances.map((token) => (
-              <Typography key={token.symbol} variant="body2">
-                {token.formatted} {token.symbol}
+            {prices && (
+              <Typography variant="body2" color="success.main">
+                💵 ≈ ${(ethBalance * prices.ethToUsd).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD
               </Typography>
-            ))}
+            )}
           </Box>
+          
+          <Typography variant="caption" color="text.secondary" display="block">
+            Safe simulation environment - no real funds at risk
+          </Typography>
         </Box>
         
         <Divider />
         
-        <MenuItem onClick={disconnectWallet}>
+        <MenuItem onClick={handleDisconnect}>
           <Close sx={{ mr: 1 }} />
-          Disconnect Wallet
+          Disconnect Test Wallet
         </MenuItem>
       </Menu>
+
+      {/* Mock Wallet Modal */}
+      <MockWallet
+        open={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        onConnect={handleWalletConnect}
+      />
     </AppBar>
   );
 }

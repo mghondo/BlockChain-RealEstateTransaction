@@ -64,13 +64,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
   const maxAffordableShares = Math.floor(userEthBalance / property.pricePerShare);
 
   return (
-    <div className={`bg-gray-800 rounded-lg border border-gray-700 hover:border-gray-600 transition-all duration-200 hover:shadow-lg ${className}`}>
+    <div className={`group relative bg-gray-800/60 backdrop-blur-sm rounded-xl border border-gray-600/50 hover:border-gray-500/70 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 ${className}`}>
       {/* Property Image */}
       <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent rounded-t-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10"></div>
         <img
           src={property.imageUrl}
           alt={property.address}
-          className="w-full h-48 object-cover rounded-t-lg"
+          className="w-full h-48 object-cover rounded-t-xl group-hover:scale-105 transition-transform duration-500"
           onError={(e) => {
             const target = e.target as HTMLImageElement;
             target.src = 'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?w=400&h=300&fit=crop';
@@ -91,14 +92,14 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         </div>
 
         {/* Shares Sold Progress */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-900 bg-opacity-75 p-2">
-          <div className="flex justify-between items-center text-xs text-white mb-1">
-            <span>Shares Sold</span>
-            <span>{property.sharesSold}/100</span>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-gray-900/90 to-transparent backdrop-blur-sm p-3 rounded-b-xl">
+          <div className="flex justify-between items-center text-xs text-white mb-2">
+            <span className="font-medium">Shares Sold</span>
+            <span className="font-bold">{property.sharesSold}/100</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2">
+          <div className="w-full bg-gray-700/50 rounded-full h-2.5 overflow-hidden">
             <div 
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 h-full rounded-full transition-all duration-500 shadow-lg"
               style={{ width: `${property.sharesSold}%` }}
             ></div>
           </div>
@@ -169,20 +170,20 @@ export const PropertyCard: React.FC<PropertyCardProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex space-x-2">
+        <div className="flex space-x-3">
           <button
             onClick={() => onSelect?.(property.id)}
-            className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded text-sm font-medium transition-colors"
+            className="flex-1 bg-gradient-to-r from-gray-700 to-gray-600 hover:from-gray-600 hover:to-gray-500 text-white py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
           >
             View Details
           </button>
           <button
             onClick={() => onInvest?.(property.id)}
             disabled={!canAfford || property.status === 'sold_out'}
-            className={`flex-1 py-2 px-4 rounded text-sm font-medium transition-colors ${
+            className={`flex-1 py-3 px-4 rounded-lg text-sm font-medium transition-all duration-200 transform ${
               canAfford && property.status !== 'sold_out'
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5'
+                : 'bg-gray-600/50 text-gray-400 cursor-not-allowed'
             }`}
           >
             {property.status === 'sold_out' ? 'Sold Out' : 'Invest'}

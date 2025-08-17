@@ -1,6 +1,8 @@
 import { doc, getDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { RentalIncomeService } from './rentalIncomeService';
+import { PropertyAppreciationService } from './propertyAppreciationService';
+import { PropertyContractService } from './propertyContractService';
 
 interface BackgroundCalculationResult {
   rentalIncomeGenerated: number;
@@ -16,6 +18,7 @@ interface OfflineProgress {
   rentalIncome: number;
   appreciation: number;
   newProperties: any[];
+  contractedProperties: any[];
   message: string;
 }
 
@@ -63,6 +66,52 @@ export class BackgroundCalculationService {
     }
   }
 
+  // Calculate missed property appreciation while offline
+  static async calculateMissedAppreciation(
+    userId: string,
+    lastGameTime: Date,
+    currentGameTime: Date
+  ): Promise<number> {
+    try {
+      console.log('Calculating missed appreciation for user:', userId);
+      console.log('Time period:', lastGameTime, 'to', currentGameTime);
+
+      // Get initial portfolio value
+      const initialAppreciation = await PropertyAppreciationService.getUserTotalAppreciation(userId);
+      
+      // Process appreciation for all properties for the time period
+      const timeDiff = currentGameTime.getTime() - lastGameTime.getTime();
+      const quartersElapsed = Math.floor(timeDiff / (1000 * 60 * 60 * 24 * 90)); // 90 days per quarter
+
+      if (quartersElapsed < 1) {
+        console.log('Less than 1 quarter elapsed, no appreciation processing needed');
+        return 0;
+      }
+
+      console.log(`Processing ${quartersElapsed} quarters of appreciation`);
+
+      // Process appreciation for each quarter
+      for (let quarter = 1; quarter <= quartersElapsed; quarter++) {
+        const quarterDate = new Date(lastGameTime.getTime() + (quarter * 90 * 24 * 60 * 60 * 1000));
+        await PropertyAppreciationService.processAllPropertyAppreciation(quarterDate);
+      }
+
+      // Update all user investments with new values
+      await PropertyAppreciationService.updateUserInvestmentValues(userId);
+
+      // Get final portfolio value and calculate gains
+      const finalAppreciation = await PropertyAppreciationService.getUserTotalAppreciation(userId);
+      const appreciationGains = finalAppreciation.totalAppreciation - initialAppreciation.totalAppreciation;
+
+      console.log(`Total appreciation gains: ${appreciationGains}`);
+      return Math.max(0, appreciationGains);
+
+    } catch (error) {
+      console.error('Error calculating missed appreciation:', error);
+      return 0;
+    }
+  }
+
   // Process offline progress for UI display
   static async processOfflineProgress(userId: string, lastSeen: Date): Promise<OfflineProgress> {
     const now = new Date();
@@ -77,16 +126,44 @@ export class BackgroundCalculationService {
       currentGameTime
     );
 
+    // Process property appreciation for the time offline
+    const appreciationGains = await this.calculateMissedAppreciation(
+      userId,
+      lastSeen,
+      currentGameTime
+    );
+
+    // Process property contracts that went pending while offline
+    let pendingProperties: any[] = [];
+    try {
+      pendingProperties = await PropertyContractService.processContractUpdates(currentGameTime);
+      console.log(`⏳ ${pendingProperties.length} properties went pending while offline`);
+    } catch (error) {
+      console.error('Error processing missed contracts:', error);
+    }
+
+    const totalMessage = [];
+    if (missedRentalIncome > 0) {
+      totalMessage.push(`You earned ${missedRentalIncome.toFixed(2)} USDC in rental income`);
+    }
+    if (appreciationGains > 0) {
+      totalMessage.push(`Your properties appreciated by ${appreciationGains.toFixed(4)} ETH`);
+    }
+    if (pendingProperties.length > 0) {
+      totalMessage.push(`${pendingProperties.length} properties went pending/sold`);
+    }
+
     return {
       realTimeOffline: offlineRealTime,
       gameTimeElapsed: offlineGameTime,
       gameMonthsElapsed: Math.floor(offlineGameTime / (1000 * 60 * 60 * 24 * 30)),
       rentalIncome: missedRentalIncome,
-      appreciation: 0, // TODO: Implement in property appreciation chunk
-      newProperties: [], // TODO: Implement in property generation chunk
-      message: missedRentalIncome > 0 
-        ? `You earned ${missedRentalIncome.toFixed(2)} USDC in rental income while away!`
-        : 'No rental income earned while away.'
+      appreciation: appreciationGains,
+      newProperties: [],
+      contractedProperties: pendingProperties,
+      message: totalMessage.length > 0 
+        ? `While away: ${totalMessage.join(' and ')}!`
+        : 'No changes while away.'
     };
   }
   

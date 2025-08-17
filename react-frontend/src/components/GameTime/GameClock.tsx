@@ -12,35 +12,36 @@ export const GameClock: React.FC<GameClockProps> = ({ showDetailed = false }) =>
   const { gameTime, realTime, gameStartTime, isCalculatingOfflineProgress } = useGameTime(account || '');
   
   if (!gameTime) {
-    return (
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        gap: 1, 
-        p: 2, 
-        backgroundColor: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: 2 
-      }}>
-        <Box sx={{ 
-          width: 8, 
-          height: 8, 
-          backgroundColor: 'success.main', 
-          borderRadius: '50%',
-          animation: 'syncFlicker 0.2s infinite',
-          '@keyframes syncFlicker': {
-            '0%, 50%': {
-              backgroundColor: 'success.main'
-            },
-            '51%, 100%': {
-              backgroundColor: '#2e7d58'
-            }
-          }
-        }} />
-        <Typography variant="body2" color="text.secondary">
-          Syncing game time...
-        </Typography>
-      </Box>
-    );
+    return null;
+    // return (
+    //   <Box sx={{ 
+    //     display: 'flex', 
+    //     alignItems: 'center', 
+    //     gap: 1, 
+    //     p: 2, 
+    //     backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    //     borderRadius: 2 
+    //   }}>
+    //     <Box sx={{ 
+    //       width: 8, 
+    //       height: 8, 
+    //       backgroundColor: 'success.main', 
+    //       borderRadius: '50%',
+    //       animation: 'syncFlicker 0.2s infinite',
+    //       '@keyframes syncFlicker': {
+    //         '0%, 50%': {
+    //           backgroundColor: 'success.main'
+    //         },
+    //         '51%, 100%': {
+    //           backgroundColor: '#2e7d58'
+    //         }
+    //       }
+    //     }} />
+    //     <Typography variant="body2" color="text.secondary">
+    //       Syncing game time...
+    //     </Typography>
+    //   </Box>
+    // );
   }
   
   if (isCalculatingOfflineProgress) {
