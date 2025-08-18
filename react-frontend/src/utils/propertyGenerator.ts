@@ -278,10 +278,10 @@ export const generateProperty = async (): Promise<Omit<Property, 'id'>> => {
   // Generate mock investors
   const mockInvestors = generateMockInvestors(propertyDetails.price);
   
-  // Generate additional metadata
-  const totalShares = Math.floor(propertyDetails.price / 1000); // $1000 per share roughly
+  // Generate additional metadata - Always 100 shares per property
+  const totalShares = 100;
   const sharePrice = Math.floor(propertyDetails.price / totalShares);
-  const availableShares = getRandomBetween(totalShares * 0.3, totalShares * 0.8); // 30-80% available
+  const availableShares = getRandomBetween(70, 100); // 70-100 shares available
   
   const config = PROPERTY_CLASS_CONFIGS[selectedClass];
   const propertyType = getRandomFromArray(config.types);

@@ -3,6 +3,7 @@ import { db } from '../firebase/config';
 import { RentalIncomeService } from './rentalIncomeService';
 import { PropertyAppreciationService } from './propertyAppreciationService';
 import { PropertyContractService } from './propertyContractService';
+import { getAppreciationRate, calculateQuarterlyRate } from '../config/appreciationConfig';
 
 interface BackgroundCalculationResult {
   rentalIncomeGenerated: number;
@@ -297,10 +298,9 @@ export class BackgroundCalculationService {
       const property = investment.property;
       const currentValue = property.currentValue;
       
-      // Simple appreciation: 2-6% per quarter based on property class
-      const classMultipliers = { A: 0.04, B: 0.03, C: 0.02 };
-      const baseRate = classMultipliers[property.class as keyof typeof classMultipliers] || 0.02;
-      const quarterlyRate = baseRate + (Math.random() * 0.02); // Add some randomness
+      // Use centralized appreciation config
+      const annualRate = getAppreciationRate(property.class as 'A' | 'B' | 'C');
+      const quarterlyRate = calculateQuarterlyRate(annualRate);
       
       const totalAppreciation = quarterlyRate * quarters;
       const newValue = currentValue * (1 + totalAppreciation);

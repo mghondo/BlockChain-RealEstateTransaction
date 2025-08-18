@@ -1,5 +1,6 @@
 import { collection, query, where, getDocs, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
+import { getAppreciationRate, calculateQuarterlyRate } from '../config/appreciationConfig';
 
 interface AppreciationRecord {
   propertyId: string;
@@ -27,28 +28,9 @@ interface PropertyAppreciationData {
 
 export class PropertyAppreciationService {
   
-  // Base annual appreciation rates by property class
-  private static readonly BASE_APPRECIATION_RATES = {
-    'A': 0.04, // 4% annually for Class A properties
-    'B': 0.035, // 3.5% annually for Class B properties  
-    'C': 0.025, // 2.5% annually for Class C properties
-  };
-
-  // Calculate quarterly appreciation based on annual rate
-  static calculateQuarterlyRate(annualRate: number): number {
-    // Compound quarterly: (1 + annual)^(1/4) - 1
-    return Math.pow(1 + annualRate, 0.25) - 1;
-  }
-
-  // Get property appreciation rate with some randomness
+  // Get property appreciation rate using centralized config
   static getPropertyAppreciationRate(propertyClass: 'A' | 'B' | 'C'): number {
-    const baseRate = this.BASE_APPRECIATION_RATES[propertyClass];
-    // Add some randomness: ±20% variation
-    const variation = (Math.random() - 0.5) * 0.4; // -0.2 to +0.2
-    const finalRate = baseRate * (1 + variation);
-    
-    // Ensure rate stays within reasonable bounds (1% to 8% annually)
-    return Math.max(0.01, Math.min(0.08, finalRate));
+    return getAppreciationRate(propertyClass);
   }
 
   // Calculate what quarter we're in based on game date
@@ -106,7 +88,7 @@ export class PropertyAppreciationService {
         appreciationRate = this.getPropertyAppreciationRate(propertyClass);
       }
 
-      const quarterlyRate = this.calculateQuarterlyRate(appreciationRate);
+      const quarterlyRate = calculateQuarterlyRate(appreciationRate);
       
       // Calculate how many quarters have passed
       let quartersToApply = 1;
