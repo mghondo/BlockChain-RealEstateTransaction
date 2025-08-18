@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Chip, Typography } from '@mui/material';
+import { Box, Chip, Typography, Card, CardContent, Divider, alpha } from '@mui/material';
+import { TrendingUp, LocalGasStation } from '@mui/icons-material';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
 
 interface PriceDisplayProps {
@@ -12,19 +13,38 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({ compact = false, cla
 
   if (loading) {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-        <span className="text-sm text-gray-400">Loading prices...</span>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box 
+          sx={{ 
+            width: 8, 
+            height: 8, 
+            bgcolor: 'warning.main', 
+            borderRadius: '50%',
+            animation: 'pulse 1.5s infinite'
+          }} 
+        />
+        <Typography variant="body2" color="text.secondary">
+          Loading prices...
+        </Typography>
+      </Box>
     );
   }
 
   if (error) {
     return (
-      <div className={`flex items-center space-x-2 ${className}`}>
-        <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-        <span className="text-sm text-red-400">Price error</span>
-      </div>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Box 
+          sx={{ 
+            width: 8, 
+            height: 8, 
+            bgcolor: 'error.main', 
+            borderRadius: '50%' 
+          }} 
+        />
+        <Typography variant="body2" color="error.main">
+          Price error
+        </Typography>
+      </Box>
     );
   }
 
@@ -113,59 +133,201 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({ compact = false, cla
   }
 
   return (
-    <div className={`bg-gray-800 rounded-lg p-4 border border-gray-700 ${className}`}>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-white">Live Prices</h3>
-        <div className="flex items-center text-green-500">
-          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-          <span className="text-xs">LIVE</span>
-        </div>
-      </div>
+    <Card 
+      sx={{ 
+        background: `linear-gradient(135deg, ${alpha('#1976d2', 0.1)} 0%, ${alpha('#00c853', 0.1)} 100%)`,
+        border: '1px solid',
+        borderColor: 'divider',
+        position: 'relative',
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: '-100%',
+          width: '100%',
+          height: '100%',
+          background: `linear-gradient(90deg, transparent, ${alpha('#fff', 0.1)}, transparent)`,
+          animation: 'shimmer 3s infinite',
+        },
+        '@keyframes shimmer': {
+          '0%': { left: '-100%' },
+          '100%': { left: '100%' }
+        }
+      }}
+    >
+      <CardContent sx={{ p: 3 }}>
+        {/* Header */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TrendingUp sx={{ color: 'primary.main', fontSize: 20 }} />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Live Prices
+            </Typography>
+          </Box>
+          <Chip
+            label="LIVE"
+            size="small"
+            sx={{
+              bgcolor: 'success.main',
+              color: 'white',
+              fontWeight: 600,
+              fontSize: '0.75rem',
+              '& .MuiChip-label': {
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5
+              },
+              '&::before': {
+                content: '""',
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                bgcolor: 'white',
+                animation: 'pulse 1.5s infinite'
+              }
+            }}
+          />
+        </Box>
 
-      <div className="space-y-3">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-              Ξ
-            </div>
-            <span className="text-gray-300">Ethereum</span>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-semibold text-white">{formatPrice(prices.ethToUsd)}</div>
-            <div className="text-xs text-gray-400">ETH/USD</div>
-          </div>
-        </div>
+        {/* Price Grid */}
+        <Box sx={{ display: 'grid', gap: 2, mb: 3 }}>
+          {/* Ethereum */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              p: 2,
+              borderRadius: 2,
+              bgcolor: alpha('#1976d2', 0.1),
+              border: '1px solid',
+              borderColor: alpha('#1976d2', 0.2),
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: alpha('#1976d2', 0.15),
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box 
+                sx={{ 
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: '#627eea',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(98, 126, 234, 0.3)'
+                }}
+              >
+                Ξ
+              </Box>
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  Ethereum
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  ETH/USD
+                </Typography>
+              </Box>
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main' }}>
+              {formatPrice(prices.ethToUsd)}
+            </Typography>
+          </Box>
 
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <div className="w-6 h-6 bg-green-600 rounded-full flex items-center justify-center text-xs font-bold text-white">
-              $
-            </div>
-            <span className="text-gray-300">USD Coin</span>
-          </div>
-          <div className="text-right">
-            <div className="text-lg font-semibold text-white">{formatPrice(prices.usdcToUsd)}</div>
-            <div className="text-xs text-gray-400">USDC/USD</div>
-          </div>
-        </div>
+          {/* USDC */}
+          <Box 
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center',
+              p: 2,
+              borderRadius: 2,
+              bgcolor: alpha('#00c853', 0.1),
+              border: '1px solid',
+              borderColor: alpha('#00c853', 0.2),
+              transition: 'all 0.2s ease',
+              '&:hover': {
+                bgcolor: alpha('#00c853', 0.15),
+                transform: 'translateY(-1px)'
+              }
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Box 
+                sx={{ 
+                  width: 40,
+                  height: 40,
+                  borderRadius: '50%',
+                  bgcolor: '#26a69a',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.25rem',
+                  fontWeight: 700,
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(38, 166, 154, 0.3)'
+                }}
+              >
+                $
+              </Box>
+              <Box>
+                <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                  USD Coin
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  USDC/USD
+                </Typography>
+              </Box>
+            </Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main' }}>
+              {formatPrice(prices.usdcToUsd)}
+            </Typography>
+          </Box>
+        </Box>
 
-        <div className="pt-3 border-t border-gray-700">
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-gray-400">Exchange Rate</span>
-            <span className="text-sm text-white font-medium">
+        <Divider sx={{ my: 2 }} />
+
+        {/* Exchange Rate & Gas */}
+        <Box sx={{ display: 'grid', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <TrendingUp sx={{ fontSize: 16 }} />
+              Exchange Rate
+            </Typography>
+            <Typography variant="body2" sx={{ fontWeight: 600, fontFamily: 'monospace' }}>
               1 ETH = {prices.ethToUsdc.toFixed(2)} USDC
-            </span>
-          </div>
-          <div className="flex justify-between items-center mt-1">
-            <span className="text-sm text-gray-400">Gas Price</span>
-            <span className="text-sm text-white">{prices.gasPrice} gwei</span>
-          </div>
-        </div>
+            </Typography>
+          </Box>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <LocalGasStation sx={{ fontSize: 16 }} />
+              Gas Price
+            </Typography>
+            <Chip 
+              label={`${prices.gasPrice} gwei`}
+              size="small"
+              variant="outlined"
+              sx={{ fontWeight: 600, fontFamily: 'monospace' }}
+            />
+          </Box>
+        </Box>
 
-        <div className="text-xs text-gray-500 text-center">
-          Last updated: {formatTime(lastUpdated!)}
-        </div>
-      </div>
-    </div>
+        {/* Last Updated */}
+        <Box sx={{ textAlign: 'center', mt: 2 }}>
+          <Typography variant="caption" color="text.secondary">
+            Last updated: {formatTime(lastUpdated!)}
+          </Typography>
+        </Box>
+      </CardContent>
+    </Card>
   );
 };

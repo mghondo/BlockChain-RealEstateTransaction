@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import {
   Box,
   Container,
@@ -7,7 +8,8 @@ import {
   CardContent,
   Chip,
   LinearProgress,
-  Button
+  Button,
+  IconButton
 } from '@mui/material';
 import {
   AccountBalance,
@@ -15,18 +17,32 @@ import {
   Home,
   Timeline
 } from '@mui/icons-material';
-import { useWallet } from '../../hooks/useWallet';
-import { useTokenBalance } from '../../hooks/useTokenBalance';
+import { useMockWallet } from '../../hooks/useMockWallet';
 import { PriceDisplay } from '../Currency/PriceDisplay';
 import { RentalIncomeTracker } from '../Income/RentalIncomeTracker';
 import { IncomeChart } from '../Income/IncomeChart';
 import { EscrowTracker } from '../Escrow/EscrowTracker';
 import { PortfolioOverview } from '../Portfolio/PortfolioOverview';
 import { setupTestInvestments } from '../../utils/createSampleData';
+import { DashboardCharts } from './DashboardCharts';
+import { useCryptoPrices } from '../../hooks/useCryptoPrices';
+import { AccountBalanceWallet, ContentCopy, LocationOn, TrendingUp as TrendingUpIcon } from '@mui/icons-material';
 
 export default function Dashboard() {
-  const { isConnected, account, balance, connectWallet } = useWallet();
-  const { tokenBalances } = useTokenBalance();
+  const { isConnected, address, ethBalance, restoreWallet, formatAddress, formatBalance } = useMockWallet();
+  const { prices } = useCryptoPrices();
+
+  // Restore wallet on component mount
+  useEffect(() => {
+    restoreWallet();
+  }, [restoreWallet]);
+
+  const handleCopyAddress = () => {
+    if (address) {
+      navigator.clipboard.writeText(address);
+      // Could add a toast notification here
+    }
+  };
 
   if (!isConnected) {
     return (
@@ -38,13 +54,53 @@ export default function Dashboard() {
           <Typography variant="body1" color="text.secondary" paragraph>
             Please connect your wallet to view your investment dashboard.
           </Typography>
-          <Button variant="contained" size="large" onClick={connectWallet}>
-            Connect Wallet
-          </Button>
+          <Typography variant="body2" color="text.secondary">
+            Go to the header and click "Connect Test Wallet" to get started.
+          </Typography>
         </Box>
       </Container>
     );
   }
+
+  // Mock user properties data - in a real app this would come from a hook/API
+  const userProperties = [
+    {
+      id: '1',
+      address: '123 Blockchain Avenue',
+      city: 'Miami',
+      state: 'FL',
+      class: 'A' as const,
+      sharesOwned: 25,
+      invested: 12500,
+      currentValue: 13750,
+      monthlyIncome: 425.50,
+      status: 'Active' as const
+    },
+    {
+      id: '2', 
+      address: '456 DeFi Street',
+      city: 'Austin',
+      state: 'TX',
+      class: 'B' as const,
+      sharesOwned: 15,
+      invested: 7500,
+      currentValue: 8100,
+      monthlyIncome: 245.25,
+      status: 'Active' as const
+    },
+    {
+      id: '3',
+      address: '789 Smart Contract Boulevard',
+      city: 'Denver',
+      state: 'CO', 
+      class: 'C' as const,
+      sharesOwned: 40,
+      invested: 8000,
+      currentValue: 8480,
+      monthlyIncome: 320.75,
+      status: 'Under Review' as const
+    }
+  ];
 
   // Mock data for demonstration
   const portfolioStats = {
@@ -87,12 +143,201 @@ export default function Dashboard() {
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Typography variant="h4" gutterBottom>
-        Investment Dashboard
+        Welcome to Dashboard
       </Typography>
-      
-      <Typography variant="body1" color="text.secondary" gutterBottom>
-        Welcome back! Here's your portfolio overview.
-      </Typography>
+
+      {/* Wallet Details Card */}
+      <Card sx={{ mb: 4, background: 'linear-gradient(135deg, rgba(25, 118, 210, 0.05) 0%, rgba(0, 200, 83, 0.05) 100%)' }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <AccountBalanceWallet sx={{ color: 'primary.main' }} />
+            <Typography variant="h6">
+              🎮 Test Wallet Connected
+            </Typography>
+            <Chip label="Simulation" color="secondary" size="small" />
+          </Box>
+          
+          <Grid container spacing={3}>
+            <Grid item xs={12} md={8}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Test Wallet Address
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                <Typography variant="body1" sx={{ fontFamily: 'monospace', fontSize: '0.875rem' }}>
+                  {address}
+                </Typography>
+                <IconButton 
+                  size="small" 
+                  onClick={handleCopyAddress}
+                  sx={{ 
+                    color: 'text.secondary',
+                    '&:hover': { color: 'primary.main' }
+                  }}
+                >
+                  <ContentCopy fontSize="small" />
+                </IconButton>
+              </Box>
+              
+              <Typography variant="caption" color="text.secondary" display="block">
+                Safe simulation environment - no real funds at risk
+              </Typography>
+            </Grid>
+            
+            <Grid item xs={12} md={4}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Test Balances
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="h6" color="primary.main" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  💎 {formatBalance(ethBalance)} ETH
+                </Typography>
+                {prices && (
+                  <Typography variant="body2" color="success.main" style={{ fontSize: '1.25rem' }}>
+                    💵 ≈ ${(ethBalance * prices.ethToUsd).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD
+                  </Typography>
+                )}
+              </Box>
+              
+              <Typography variant="body2" color="success.main" sx={{ fontWeight: 900, fontSize: '1.25rem' }}>
+                ✅ Ready to invest!
+              </Typography>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
+      {/* User Properties Section */}
+      <Card sx={{ mb: 4 }}>
+        <CardContent sx={{ p: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+            <Home sx={{ color: 'primary.main' }} />
+            <Typography variant="h6">
+              Your Properties
+            </Typography>
+            <Chip label={`${userProperties.length} Properties`} size="small" color="primary" />
+          </Box>
+
+          {userProperties.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Home sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+              <Typography variant="h6" color="text.secondary" gutterBottom>
+                No Properties Yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary" paragraph>
+                Start investing in fractional real estate to see your portfolio here.
+              </Typography>
+              <Button variant="contained" href="/properties">
+                Browse Properties
+              </Button>
+            </Box>
+          ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {userProperties.map((property, index) => (
+                <Box
+                  key={property.id}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: 2,
+                    borderRadius: 2,
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    bgcolor: 'background.paper',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: 'action.hover',
+                      transform: 'translateX(4px)',
+                      borderColor: 'primary.main'
+                    }
+                  }}
+                >
+                  {/* Property Info */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 2,
+                        bgcolor: property.class === 'A' ? '#FFD700' : 
+                                 property.class === 'B' ? '#C0C0C0' : '#CD7F32',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#000',
+                        fontWeight: 700,
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      {property.class}
+                    </Box>
+                    
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {property.address}
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <LocationOn sx={{ fontSize: 14, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary">
+                          {property.city}, {property.state}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* Investment Details */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 4, textAlign: 'right' }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Shares Owned
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {property.sharesOwned}/100
+                      </Typography>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Investment
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'primary.main' }}>
+                        ${property.invested.toLocaleString()}
+                      </Typography>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Current Value
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+                        ${property.currentValue.toLocaleString()}
+                      </Typography>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Monthly Income
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
+                        ${property.monthlyIncome.toFixed(0)}/mo
+                      </Typography>
+                    </Box>
+
+                    <Box sx={{ minWidth: 80 }}>
+                      <Chip
+                        label={property.status}
+                        size="small"
+                        color={property.status === 'Active' ? 'success' : 'warning'}
+                        sx={{ fontWeight: 600, fontSize: '0.75rem' }}
+                      />
+                    </Box>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Test Data Button (for development) */}
       {process.env.NODE_ENV === 'development' && (
@@ -100,7 +345,7 @@ export default function Dashboard() {
           <Button 
             variant="outlined"
             size="small"
-            onClick={() => setupTestInvestments(account || '')}
+            onClick={() => setupTestInvestments(address || '')}
             sx={{ mr: 2 }}
           >
             🧪 Create Test Investments
@@ -113,6 +358,11 @@ export default function Dashboard() {
 
       {/* Crypto Price Display */}
       <PriceDisplay className="mb-6" />
+
+      {/* Portfolio Analytics Charts */}
+      <Box sx={{ mb: 4 }}>
+        <DashboardCharts />
+      </Box>
 
       {/* Rental Income Section */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -193,43 +443,6 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      {/* Wallet Overview */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Wallet Overview
-          </Typography>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Connected Account
-              </Typography>
-              <Typography variant="body1" sx={{ fontFamily: 'monospace', mb: 2 }}>
-                {account}
-              </Typography>
-              
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                ETH Balance
-              </Typography>
-              <Typography variant="h6">
-                {parseFloat(balance).toFixed(4)} ETH
-              </Typography>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                Token Balances
-              </Typography>
-              {tokenBalances.map((token) => (
-                <Box key={token.symbol} sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2">{token.symbol}</Typography>
-                  <Typography variant="body2">{token.formatted}</Typography>
-                </Box>
-              ))}
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
 
       {/* Investment List */}
       <Typography variant="h6" gutterBottom>
