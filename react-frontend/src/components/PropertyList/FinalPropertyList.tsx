@@ -28,6 +28,7 @@ import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { PropertyDetailModal } from '../PropertyDetail/PropertyDetailModal';
 import { getRentalIncomeDisplay } from '../../utils/rentalCalculations';
+import { backfillPropertyTimestamps } from '../../utils/backfillPropertyTimestamps';
 
 export default function FinalPropertyList() {
   const [properties, setProperties] = useState<any[]>([]);
@@ -118,8 +119,11 @@ export default function FinalPropertyList() {
         ...doc.data()
       }));
       
-      console.log(`📦 Loaded ${docs.length} properties for display`);
-      setProperties(docs);
+      // Shuffle properties for randomized display order
+      const shuffledDocs = docs.sort(() => Math.random() - 0.5);
+      
+      console.log(`📦 Loaded ${docs.length} properties for display (shuffled)`);
+      setProperties(shuffledDocs);
       setCurrentPage(1); // Reset to first page when refreshing
       setLoading(false);
     } catch (err) {
@@ -213,6 +217,18 @@ export default function FinalPropertyList() {
     setSelectedProperty(null);
   };
 
+  // Check if property is newly listed (within 30 minutes)
+  const isJustListed = (property: any) => {
+    if (!property.createdAt) return false;
+    
+    const now = new Date();
+    const createdAt = property.createdAt.toDate ? property.createdAt.toDate() : new Date(property.createdAt);
+    const timeDiff = now.getTime() - createdAt.getTime();
+    const thirtyMinutes = 30 * 60 * 1000; // 30 minutes in milliseconds
+    
+    return timeDiff < thirtyMinutes;
+  };
+
   const toggleSelectAll = () => {
     if (selectedClasses.length === 3) {
       // If all are selected, select none
@@ -259,7 +275,11 @@ export default function FinalPropertyList() {
   const classRanges = getClassRanges();
 
   useEffect(() => {
-    loadProperties();
+    // Backfill timestamps for existing properties (one-time operation)
+    backfillPropertyTimestamps().then(() => {
+      // Then load properties
+      loadProperties();
+    });
   }, []);
 
   useEffect(() => {
@@ -330,9 +350,6 @@ export default function FinalPropertyList() {
             onClick={() => setShowFilters(!showFilters)}
           >
             Filters
-          </Button>
-          <Button variant="contained" onClick={loadProperties}>
-            Refresh
           </Button>
         </Box>
       </Box>
@@ -671,19 +688,42 @@ export default function FinalPropertyList() {
                 </Typography>
                 
                 {/* Property Details */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography variant="body2" sx={{ 
-                    backgroundColor: 
-                      property.class === 'A' ? '#FFD700' :
-                      property.class === 'B' ? '#C0C0C0' : '#CD7F32',
-                    color: '#000',
-                    px: 1,
-                    py: 0.5,
-                    borderRadius: 1,
-                    fontWeight: 600
-                  }}>
-                    Class {property.class || '?'}
-                  </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                    <Typography variant="body2" sx={{ 
+                      backgroundColor: 
+                        property.class === 'A' ? '#FFD700' :
+                        property.class === 'B' ? '#C0C0C0' : '#CD7F32',
+                      color: '#000',
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      fontWeight: 600
+                    }}>
+                      Class {property.class || '?'}
+                    </Typography>
+                    
+                    {/* Just Listed Badge */}
+                    {isJustListed(property) && (
+                      <Typography variant="caption" sx={{
+                        backgroundColor: '#ff4444',
+                        color: 'white',
+                        px: 1,
+                        py: 0.5,
+                        borderRadius: 1,
+                        fontWeight: 700,
+                        fontSize: '0.75rem',
+                        animation: 'pulse 2s infinite',
+                        '@keyframes pulse': {
+                          '0%': { opacity: 1 },
+                          '50%': { opacity: 0.7 },
+                          '100%': { opacity: 1 }
+                        }
+                      }}>
+                        🆕 JUST LISTED
+                      </Typography>
+                    )}
+                  </Box>
                   
                   <Typography variant="body2" color={
                     property.status === 'available' ? 'success.main' :

@@ -72,7 +72,6 @@ export const MockWallet: React.FC<MockWalletProps> = ({ open, onClose, onConnect
   const calculateEthAmount = (): number => {
     const ethPrice = prices?.ethToUsd || 4462; // Default to ~$4,462 ETH price if not loaded
     const ethAmount = 20000 / ethPrice; // $20k worth of ETH
-    console.log(`💰 Mock Wallet: ETH Price = $${ethPrice}, Giving ${ethAmount.toFixed(4)} ETH = $${(ethAmount * ethPrice).toFixed(0)}`);
     return ethAmount;
   };
 

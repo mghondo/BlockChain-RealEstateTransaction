@@ -22,20 +22,23 @@ export class PropertyTimelineService {
     try {
       console.log('🔄 Initializing property timelines (background)...');
       
-      // Get properties without timeline
-      const propertiesQuery = query(
-        collection(db, 'properties'),
-        where('timelineInitialized', '!=', true)
-      );
-      
-      const snapshot = await getDocs(propertiesQuery);
+      // Get all properties and filter for those without timeline
+      const snapshot = await getDocs(collection(db, 'properties'));
       const updatePromises: Promise<void>[] = [];
+      let processedCount = 0;
       
       snapshot.docs.forEach((docSnapshot) => {
         const property = docSnapshot.data();
+        
+        // Skip if already has timeline initialized
+        if (property.timelineInitialized === true) {
+          return;
+        }
+        
         const timing = TIMELINE_CONFIG[property.class as 'A' | 'B' | 'C'];
         
         if (timing) {
+          processedCount++;
           // Random time between min and max hours from now
           const randomHours = Math.random() * (timing.maxHours - timing.minHours) + timing.minHours;
           const contractTime = new Date(Date.now() + (randomHours * 60 * 60 * 1000));
@@ -53,7 +56,7 @@ export class PropertyTimelineService {
       });
       
       await Promise.all(updatePromises);
-      console.log(`✅ Initialized timelines for ${updatePromises.length} properties`);
+      console.log(`✅ Initialized timelines for ${processedCount} properties`);
       
     } catch (error) {
       console.error('❌ Error initializing property timelines:', error);
@@ -122,7 +125,10 @@ export class PropertyTimelineService {
         console.log(`📦 New property: ${newProperty.address} (Class ${newProperty.class})`);
         
         newPropertyPromises.push(
-          addDoc(collection(db, 'properties'), newProperty)
+          addDoc(collection(db, 'properties'), {
+            ...newProperty,
+            createdAt: serverTimestamp()
+          })
         );
       }
       

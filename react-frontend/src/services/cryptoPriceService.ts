@@ -28,7 +28,7 @@ export class CryptoPriceService {
         return this.priceCache.data;
       }
 
-      console.log('Fetching fresh crypto prices from CoinGecko...');
+      // console.log('Fetching fresh crypto prices from CoinGecko...');
 
       const response = await fetch(
         `${this.COINGECKO_BASE_URL}/simple/price?ids=ethereum,usd-coin&vs_currencies=usd`

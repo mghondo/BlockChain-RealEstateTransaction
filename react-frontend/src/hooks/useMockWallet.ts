@@ -105,7 +105,7 @@ export const useMockWallet = () => {
           isLoading: false,
           error: null
         });
-        console.log('🎮 Mock wallet restored from storage');
+        // console.log('🎮 Mock wallet restored from storage');
         return true;
       } catch (error) {
         console.error('Failed to restore wallet from storage:', error);

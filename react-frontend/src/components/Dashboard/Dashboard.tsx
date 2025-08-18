@@ -19,8 +19,6 @@ import {
 } from '@mui/icons-material';
 import { useMockWallet } from '../../hooks/useMockWallet';
 import { PriceDisplay } from '../Currency/PriceDisplay';
-import { RentalIncomeTracker } from '../Income/RentalIncomeTracker';
-import { IncomeChart } from '../Income/IncomeChart';
 import { EscrowTracker } from '../Escrow/EscrowTracker';
 import { PortfolioOverview } from '../Portfolio/PortfolioOverview';
 import { setupTestInvestments } from '../../utils/createSampleData';
@@ -350,6 +348,18 @@ export default function Dashboard() {
           >
             🧪 Create Test Investments
           </Button>
+          <Button 
+            variant="outlined"
+            size="small"
+            onClick={async () => {
+              const { PropertyTimelineService } = await import('../../services/propertyTimelineService');
+              console.log('🔧 Manually triggering timeline initialization...');
+              await PropertyTimelineService.initializePropertyTimelines();
+            }}
+            sx={{ mr: 2 }}
+          >
+            ⏰ Initialize Timelines
+          </Button>
           <Typography variant="caption" color="text.secondary">
             Development only: Creates sample properties and investments for testing rental income
           </Typography>
@@ -364,15 +374,6 @@ export default function Dashboard() {
         <DashboardCharts />
       </Box>
 
-      {/* Rental Income Section */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} lg={8}>
-          <RentalIncomeTracker showDetailed />
-        </Grid>
-        <Grid item xs={12} lg={4}>
-          <IncomeChart />
-        </Grid>
-      </Grid>
 
       {/* Escrow Tracking Section */}
       <Box sx={{ mb: 4 }}>
