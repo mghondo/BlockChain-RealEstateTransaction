@@ -12,7 +12,11 @@ import {
   CircularProgress,
   Tooltip,
   Divider,
-  IconButton
+  IconButton,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   AccountBalanceWallet,
@@ -46,6 +50,7 @@ export default function NewHeader() {
 
   const [walletMenuAnchor, setWalletMenuAnchor] = useState<null | HTMLElement>(null);
   const [showWalletModal, setShowWalletModal] = useState(false);
+  const [showDisconnectWarning, setShowDisconnectWarning] = useState(false);
 
   const navigationItems = [
     { label: 'Home', path: '/' },
@@ -80,8 +85,17 @@ export default function NewHeader() {
   };
 
   const handleDisconnect = () => {
-    disconnectWallet();
+    setShowDisconnectWarning(true);
     setWalletMenuAnchor(null);
+  };
+
+  const confirmDisconnect = () => {
+    disconnectWallet();
+    setShowDisconnectWarning(false);
+  };
+
+  const cancelDisconnect = () => {
+    setShowDisconnectWarning(false);
   };
 
   return (
@@ -239,6 +253,44 @@ export default function NewHeader() {
         onClose={() => setShowWalletModal(false)}
         onConnect={handleWalletConnect}
       />
+
+      {/* Disconnect Warning Dialog */}
+      <Dialog
+        open={showDisconnectWarning}
+        onClose={cancelDisconnect}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1 }}>
+          ⚠️ Disconnect Test Wallet
+        </DialogTitle>
+        <DialogContent>
+          <Typography>
+            Disconnecting your test wallet will remove your real estate holdings and portfolio data. 
+            This action cannot be undone.
+          </Typography>
+          <Typography sx={{ mt: 2, fontWeight: 600, color: 'warning.main' }}>
+            Proceed with disconnect?
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={cancelDisconnect}
+            variant="outlined"
+            sx={{ mr: 1 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmDisconnect}
+            variant="contained"
+            color="error"
+            sx={{ fontWeight: 600 }}
+          >
+            Yes, Disconnect
+          </Button>
+        </DialogActions>
+      </Dialog>
     </AppBar>
   );
 }
