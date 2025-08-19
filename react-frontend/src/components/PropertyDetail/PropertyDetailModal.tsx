@@ -49,14 +49,38 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
 }) => {
   const [modalShares, setModalShares] = useState(numberOfShares);
   
-  // Real wallet data
-  const { ethBalance, isConnected, restoreWallet } = useMockWallet();
+  // Real wallet data with volatility functions
+  const { 
+    ethBalance, 
+    isConnected, 
+    address, 
+    mode, 
+    restoreWallet,
+    strikePrice,
+    createdAt,
+    initialUsdValue,
+    getCurrentUsdValue,
+    getProfitLoss,
+    getWalletPerformance
+  } = useMockWallet();
   const { getUsdValue, convertCurrency, prices } = useCryptoPrices();
 
   // Restore wallet on component mount
   useEffect(() => {
     restoreWallet();
   }, [restoreWallet]);
+
+  // Debug wallet connection state
+  useEffect(() => {
+    console.log('🔍 PropertyDetailModal wallet debug:', {
+      isConnected,
+      ethBalance,
+      address,
+      mode,
+      hasAddress: !!address,
+      actuallyConnected: isConnected || !!address
+    });
+  }, [isConnected, ethBalance, address, mode]);
   
   if (!property) return null;
 
@@ -100,24 +124,94 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   };
 
   const canAffordShares = () => {
+    if (!modalShares) return true; // Can always afford 0 shares
+    
     const totalCostUsd = Math.round((property.price || 0) / 100 * modalShares);
-    const walletBalanceUsd = getUsdValue(ethBalance, 'ETH');
-    return walletBalanceUsd >= totalCostUsd;
+    
+    // Calculate wallet balance in USD
+    let walletBalanceUsd = 0;
+    
+    if (mode === 'simulation') {
+      // In simulation mode, ethBalance is ETH amount worth $20,000
+      // Convert ETH to USD to get buying power
+      walletBalanceUsd = getUsdValue(ethBalance, 'ETH') || 0;
+    } else {
+      // In blockchain mode, convert ETH to USD  
+      walletBalanceUsd = getUsdValue(ethBalance, 'ETH') || 0;
+    }
+    
+    const canAfford = walletBalanceUsd >= totalCostUsd;
+    
+    console.log('💰 Affordability check:', {
+      mode,
+      modalShares,
+      propertyPrice: property.price,
+      totalCostUsd,
+      ethBalance,
+      ethToUsdPrice: prices?.ethToUsd,
+      walletBalanceUsd,
+      canAfford,
+      isConnected,
+      hasAddress: !!address
+    });
+    
+    return canAfford;
   };
 
   const getWalletBalanceDisplay = () => {
-    if (!isConnected) return null;
+    // Check if wallet is connected (either isConnected flag or has address)
+    const walletConnected = isConnected || !!address;
+    if (!walletConnected || !ethBalance) return null;
     
-    const usdValue = getUsdValue(ethBalance, 'ETH');
-    const usdcEquivalent = convertCurrency(ethBalance, 'ETH', 'USDC');
+    const currentEthPrice = prices?.ethToUsd || 4462;
     
-    console.log('💰 Wallet Debug:', { ethBalance, usdValue, usdcEquivalent, prices });
-    
-    return {
-      eth: ethBalance,
-      usd: usdValue,
-      usdc: usdcEquivalent
-    };
+    if (mode === 'simulation' && strikePrice && getCurrentUsdValue) {
+      // Use volatility functions for simulation mode
+      const currentUsdValue = getCurrentUsdValue(currentEthPrice);
+      const profitLoss = getProfitLoss ? getProfitLoss(currentEthPrice) : 0;
+      const performance = getWalletPerformance ? getWalletPerformance(currentEthPrice) : null;
+      
+      const displayValues = {
+        eth: ethBalance,
+        usd: currentUsdValue,
+        usdc: currentUsdValue, // In simulation, USD and USDC are equivalent
+        profitLoss,
+        profitLossPercent: performance?.profitLossPercent || 0,
+        strikePrice,
+        currentPrice: currentEthPrice,
+        initialValue: initialUsdValue || 20000
+      };
+      
+      console.log('💰 Wallet Balance Display (Volatility):', { 
+        mode, 
+        ethBalance, 
+        displayValues, 
+        performance,
+        walletConnected
+      });
+      
+      return displayValues;
+    } else {
+      // Fallback for blockchain mode or simulation without volatility data
+      const usdValue = getUsdValue(ethBalance, 'ETH') || 0;
+      const usdcEquivalent = convertCurrency(ethBalance, 'ETH', 'USDC') || usdValue;
+      
+      const displayValues = {
+        eth: ethBalance,
+        usd: usdValue,
+        usdc: usdcEquivalent
+      };
+      
+      console.log('💰 Wallet Balance Display (Standard):', { 
+        mode, 
+        ethBalance, 
+        displayValues, 
+        prices,
+        walletConnected
+      });
+      
+      return displayValues;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -330,20 +424,66 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                   
                   {/* Wallet Balance and Insufficient Funds Warning */}
                   <Box sx={{ mb: 2 }}>
-                    {isConnected && getWalletBalanceDisplay() ? (
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                      Wallet Status: {isConnected ? 'Connected' : 'Not Connected'} | 
+                      Address: {address ? 'Yes' : 'No'} | 
+                      Mode: {mode || 'unknown'} | 
+                      Balance: {ethBalance}
+                    </Typography>
+                    
+                    {(isConnected || !!address) ? (
                       <>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                           Wallet Balance:
                         </Typography>
+                        
+                        {/* Always show balance even if conversion fails */}
                         <Typography variant="body2" color="primary.main" sx={{ fontWeight: 600, mb: 0.5 }}>
-                          {getWalletBalanceDisplay()!.eth.toFixed(4)} ETH
+                          {ethBalance ? ethBalance.toFixed(4) : '0.0000'} ETH
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                          ≈ ${getWalletBalanceDisplay()!.usd.toLocaleString()} USD | {getWalletBalanceDisplay()!.usdc.toFixed(2)} USDC
-                        </Typography>
-                        {!canAffordShares() && (
+                        
+                        {getWalletBalanceDisplay() ? (
+                          <>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                              ≈ ${getWalletBalanceDisplay()!.usd.toLocaleString()} USD | {getWalletBalanceDisplay()!.usdc.toFixed(2)} USDC
+                            </Typography>
+                            
+                            {/* Show volatility info for simulation mode */}
+                            {mode === 'simulation' && getWalletBalanceDisplay()!.profitLoss !== undefined && (
+                              <Box sx={{ mt: 1, p: 1, backgroundColor: 'rgba(0, 0, 0, 0.1)', borderRadius: 1 }}>
+                                <Typography variant="body2" sx={{ mb: 0.5, fontWeight: 600 }}>
+                                  📈 Portfolio Performance:
+                                </Typography>
+                                <Typography 
+                                  variant="body2" 
+                                  color={getWalletBalanceDisplay()!.profitLoss >= 0 ? 'success.main' : 'error.main'}
+                                  sx={{ fontWeight: 600 }}
+                                >
+                                  {getWalletBalanceDisplay()!.profitLoss >= 0 ? '+' : ''}${getWalletBalanceDisplay()!.profitLoss.toFixed(2)} 
+                                  ({getWalletBalanceDisplay()!.profitLossPercent >= 0 ? '+' : ''}{getWalletBalanceDisplay()!.profitLossPercent.toFixed(2)}%)
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                  ETH: ${getWalletBalanceDisplay()!.strikePrice?.toFixed(0)} → ${getWalletBalanceDisplay()!.currentPrice?.toFixed(0)}
+                                </Typography>
+                              </Box>
+                            )}
+                          </>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                            USD conversion unavailable (ETH Price: {prices?.ethToUsd || 'Loading...'})
+                          </Typography>
+                        )}
+                        
+                        {modalShares > 0 && !canAffordShares() && (
                           <Typography variant="body2" color="error.main" sx={{ fontWeight: 600 }}>
-                            ⚠️ Insufficient funds for {modalShares} share{modalShares !== 1 ? 's' : ''}
+                            ⚠️ Insufficient funds for {modalShares} share{modalShares !== 1 ? 's' : ''} 
+                            (Need: ${Math.round((property.price || 0) / 100 * modalShares).toLocaleString()})
+                          </Typography>
+                        )}
+                        
+                        {modalShares > 0 && canAffordShares() && (
+                          <Typography variant="body2" color="success.main" sx={{ fontWeight: 600 }}>
+                            ✅ You can afford {modalShares} share{modalShares !== 1 ? 's' : ''}
                           </Typography>
                         )}
                       </>

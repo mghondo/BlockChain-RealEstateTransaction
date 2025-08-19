@@ -13,7 +13,7 @@ require("dotenv").config();
 module.exports = {
   // Solidity compiler configuration
   solidity: {
-    version: "0.8.9", // Specify Solidity compiler version for contract compilation
+    version: "0.8.9", // Specify Solidity compiler version for contract compilation (compatible with 0.8.2+)
     settings: {
       // Optimizer settings to reduce gas costs and contract size
       optimizer: {
@@ -26,12 +26,12 @@ module.exports = {
   networks: {
     // Local development network configuration
     localhost: {
-      url: "http://127.0.0.1:8547" // Local Hardhat node URL for development and testing
+      url: "http://127.0.0.1:8546" // Local Hardhat node URL for development and testing
     },
     // Sepolia testnet configuration for testing with real network conditions
     sepolia: {
-      url: "https://rpc.sepolia.org", // Public RPC endpoint for Sepolia testnet
-      accounts: [process.env.PRIVATE_KEY] // Private key from environment variables for testnet deployment
+      url: "https://ethereum-sepolia-rpc.publicnode.com", // Alternative public RPC endpoint for Sepolia testnet
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [] // Private key from environment variables for testnet deployment
     }
   },
   // Etherscan configuration for contract verification and source code publication

@@ -43,7 +43,16 @@ export default function NewHeader() {
     disconnectWallet,
     formatAddress,
     formatBalance,
-    restoreWallet
+    restoreWallet,
+    mode,
+    strikePrice,
+    createdAt,
+    initialUsdValue,
+    getCurrentUsdValue,
+    getProfitLoss,
+    getWalletPerformance,
+    volatilityData,
+    firebaseWallet
   } = useMockWallet();
 
   const { prices } = useCryptoPrices();
@@ -72,8 +81,8 @@ export default function NewHeader() {
     setShowWalletModal(true);
   };
 
-  const handleWalletConnect = (walletData: any) => {
-    connectWallet(walletData);
+  const handleWalletConnect = async (walletData: any) => {
+    await connectWallet(walletData);
     setShowWalletModal(false);
   };
 
@@ -148,26 +157,55 @@ export default function NewHeader() {
               color="primary"
               sx={{ mr: 1 }}
             />
-            {prices && (
+            {mode === 'simulation' && volatilityData ? (
+              <Tooltip title={`Strike Price: $${volatilityData.daysSinceCreation > 0 ? `${strikePrice?.toFixed(0)} (${volatilityData.daysSinceCreation} days ago)` : strikePrice?.toFixed(0)}`}>
+                <Chip
+                  label={`$${volatilityData.currentUsdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${volatilityData.profitLoss >= 0 ? '+' : ''}$${Math.abs(volatilityData.profitLoss).toFixed(0)})`}
+                  variant="outlined"
+                  size="small"
+                  color={volatilityData.profitLoss >= 0 ? "success" : "error"}
+                  sx={{
+                    fontWeight: 'bold',
+                    '&:hover': {
+                      backgroundColor: volatilityData.profitLoss >= 0 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'
+                    }
+                  }}
+                />
+              </Tooltip>
+            ) : prices && mode === 'simulation' && getCurrentUsdValue ? (
+              (() => {
+                const currentUsdValue = getCurrentUsdValue(prices.ethToUsd);
+                const profitLoss = getProfitLoss ? getProfitLoss(prices.ethToUsd) : 0;
+                const isProfit = profitLoss >= 0;
+                return (
+                  <Chip
+                    label={`$${currentUsdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${isProfit ? '+' : ''}${profitLoss.toFixed(0)})`}
+                    variant="outlined"
+                    size="small"
+                    color={isProfit ? "success" : "error"}
+                  />
+                );
+              })()
+            ) : prices ? (
               <Chip
                 label={`≈ $${(ethBalance * prices.ethToUsd).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                 variant="outlined"
                 size="small"
                 color="success"
               />
-            )}
+            ) : null}
           </Box>
         )}
 
-        {/* Game Mode Badge */}
-        {/* {isConnected && (
+        {/* Mode Badge */}
+        {isConnected && (
           <Chip
-            label="🎮 Game Mode"
-            color="secondary"
+            label="🎮 Simulation Mode"
+            color="primary"
             size="small"
             sx={{ mr: 2 }}
           />
-        )} */}
+        )}
 
         {/* Wallet Connection */}
         {!isConnected ? (
@@ -204,9 +242,9 @@ export default function NewHeader() {
         <Box sx={{ p: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <Typography variant="subtitle2" color="text.secondary">
-              🎮 Test Wallet Connected
+              {mode === 'simulation' ? '🎮 Game Wallet Connected' : '🔗 Test Wallet Connected'}
             </Typography>
-            <Chip label="Simulation" color="secondary" size="small" />
+            <Chip label="Simulation Mode" color="secondary" size="small" />
           </Box>
           
           <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
@@ -221,21 +259,41 @@ export default function NewHeader() {
           </Box>
           
           <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-            Test Balances
+            {mode === 'simulation' ? 'Game Balance' : 'Test Balances'}
           </Typography>
           <Box sx={{ mb: 2 }}>
             <Typography variant="body2" color="primary.main">
               💎 {formatBalance(ethBalance)} ETH
             </Typography>
-            {prices && (
+            {prices && mode === 'simulation' && getCurrentUsdValue ? (
+              (() => {
+                const currentUsdValue = getCurrentUsdValue(prices.ethToUsd);
+                const profitLoss = getProfitLoss ? getProfitLoss(prices.ethToUsd) : 0;
+                const profitLossPercent = getWalletPerformance ? getWalletPerformance(prices.ethToUsd)?.profitLossPercent || 0 : 0;
+                const isProfit = profitLoss >= 0;
+                return (
+                  <>
+                    <Typography variant="body2" color="success.main">
+                      💵 ${currentUsdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} USD
+                    </Typography>
+                    <Typography variant="body2" color={isProfit ? "success.main" : "error.main"} sx={{ fontWeight: 600 }}>
+                      📈 {isProfit ? '+' : ''}${profitLoss.toFixed(2)} ({isProfit ? '+' : ''}{profitLossPercent.toFixed(2)}%)
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      ETH: ${strikePrice?.toFixed(0)} → ${prices.ethToUsd.toFixed(0)}
+                    </Typography>
+                  </>
+                );
+              })()
+            ) : prices ? (
               <Typography variant="body2" color="success.main">
                 💵 ≈ ${(ethBalance * prices.ethToUsd).toLocaleString(undefined, { maximumFractionDigits: 0 })} USD
               </Typography>
-            )}
+            ) : null}
           </Box>
           
           <Typography variant="caption" color="text.secondary" display="block">
-            Safe simulation environment - no real funds at risk
+            Game wallet with realistic crypto volatility
           </Typography>
         </Box>
         

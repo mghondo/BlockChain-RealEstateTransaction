@@ -23,7 +23,7 @@ import {
   FormControl,
   InputLabel
 } from '@mui/material';
-import { FilterList, ExpandMore, ExpandLess, Share, AttachMoney } from '@mui/icons-material';
+import { FilterList, ExpandMore, ExpandLess, Share, AttachMoney, Search } from '@mui/icons-material';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase/config';
 import { PropertyDetailModal } from '../PropertyDetail/PropertyDetailModal';
@@ -49,6 +49,7 @@ export default function FinalPropertyList() {
   const [selectedState, setSelectedState] = useState('all'); // Selected state filter
   const [selectedProperty, setSelectedProperty] = useState<any | null>(null); // Property for modal
   const [modalOpen, setModalOpen] = useState(false); // Modal open state
+  const [searchTerm, setSearchTerm] = useState(''); // Search functionality
   
   const PROPERTIES_PER_PAGE = 20;
 
@@ -154,7 +155,18 @@ export default function FinalPropertyList() {
     const classRange = priceRanges[property.class];
     const comparisonPrice = getComparisonPrice(property);
     const priceMatch = comparisonPrice >= classRange[0] && comparisonPrice <= classRange[1];
-    return priceMatch;
+    if (!priceMatch) return false;
+    
+    // Search filter - case insensitive address and city search
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      const addressLower = (property.address || '').toLowerCase();
+      const cityLower = (property.city || '').toLowerCase();
+      const searchMatch = addressLower.includes(searchLower) || cityLower.includes(searchLower);
+      if (!searchMatch) return false;
+    }
+    
+    return true;
   });
 
   // Calculate pagination for filtered properties
@@ -197,6 +209,7 @@ export default function FinalPropertyList() {
     setSearchMode('total');
     setNumberOfShares(1);
     setSelectedState('all');
+    setSearchTerm('');
     setCurrentPage(1);
   };
 
@@ -205,6 +218,11 @@ export default function FinalPropertyList() {
     const clampedValue = Math.max(1, Math.min(100, value)); // Ensure between 1-100
     setNumberOfShares(clampedValue);
     setCurrentPage(1);
+  };
+
+  const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(event.target.value);
+    setCurrentPage(1); // Reset to page 1 when search changes
   };
 
   const handlePropertyClick = (property: any) => {
@@ -325,14 +343,56 @@ export default function FinalPropertyList() {
         🏠 FracEstate Property Marketplace
       </Typography>
       
+      {/* Search Bar */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Search properties by address or city (e.g., '123', 'Main St', 'Denver', 'Miami')..."
+          value={searchTerm}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ color: 'text.secondary' }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            maxWidth: 600,
+            '& .MuiOutlinedInput-root': {
+              backgroundColor: 'background.paper',
+              '&:hover': {
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                },
+              },
+              '&.Mui-focused': {
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'primary.main',
+                },
+              },
+            },
+          }}
+        />
+        {searchTerm && (
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            Searching for: "{searchTerm}"
+          </Typography>
+        )}
+      </Box>
+      
       {/* Filter Toggle and Results */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Typography variant="h6">
             {filteredProperties.length} Properties Available
-            {filteredProperties.length !== properties.length && (
+            {(filteredProperties.length !== properties.length || searchTerm.trim()) && (
               <Typography variant="body2" color="text.secondary" component="span" sx={{ ml: 1 }}>
-                (filtered from {properties.length} total)
+                {searchTerm.trim() ? 
+                  `(${filteredProperties.length} matching "${searchTerm}" from ${properties.length} total)` :
+                  `(filtered from ${properties.length} total)`
+                }
               </Typography>
             )}
           </Typography>
@@ -730,7 +790,7 @@ export default function FinalPropertyList() {
                     property.status === 'ending_soon' ? 'warning.main' :
                     'error.main'
                   }>
-                    {property.status || 'unknown'}
+                    {property.status === 'sold_out' ? 'Pending' : (property.status || 'unknown')}
                   </Typography>
                 </Box>
                 

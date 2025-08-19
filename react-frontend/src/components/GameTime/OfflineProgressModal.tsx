@@ -61,7 +61,7 @@ export const OfflineProgressModal: React.FC<OfflineProgressModalProps> = ({
   return (
     <Dialog
       open={open}
-      onClose={isCalculating ? undefined : onClose}
+      onClose={onClose}
       maxWidth="sm"
       fullWidth
       PaperProps={{

@@ -9,7 +9,7 @@ interface PropertyTimingConfig {
 const TIMELINE_CONFIG: Record<'A' | 'B' | 'C', PropertyTimingConfig> = {
   'A': { minHours: 24, maxHours: 36 }, // 2-3 game years
   'B': { minHours: 12, maxHours: 24 }, // 1-2 game years  
-  'C': { minHours: 6, maxHours: 6 }    // 6 game months
+  'C': { minHours: 1.5, maxHours: 3 }    // 3-6 game months (1.5-3 hours real time)
 };
 
 export class PropertyTimelineService {
@@ -30,7 +30,7 @@ export class PropertyTimelineService {
       snapshot.docs.forEach((docSnapshot) => {
         const property = docSnapshot.data();
         
-        // Skip if already has timeline initialized
+        // Only initialize properties that don't have timelines yet
         if (property.timelineInitialized === true) {
           return;
         }
@@ -69,19 +69,39 @@ export class PropertyTimelineService {
   static async processPropertySales(): Promise<number> {
     try {
       const now = new Date();
+      console.log('🕐 Current time for sales check:', now);
       
-      // Find properties whose time has come
-      const readyQuery = query(
-        collection(db, 'properties'),
-        where('status', '==', 'available'),
-        where('contractTime', '<=', now)
-      );
+      // BYPASS FIREBASE QUERY ISSUES: Get all properties and filter manually
+      const allPropertiesSnapshot = await getDocs(collection(db, 'properties'));
+      console.log(`🔍 Checking all ${allPropertiesSnapshot.docs.length} properties manually...`);
       
-      const snapshot = await getDocs(readyQuery);
+      const readyProperties = allPropertiesSnapshot.docs.filter(doc => {
+        const property = doc.data();
+        const isAvailable = property.status === 'available';
+        const contractTime = property.contractTime?.toDate?.() || new Date(property.contractTime);
+        const isOverdue = contractTime <= now;
+        
+        // DEBUG: Show first few properties with their details
+        if (allPropertiesSnapshot.docs.indexOf(doc) < 3) {
+          console.log(`🔍 DEBUG Property: ${property.address}`);
+          console.log(`   Status: ${property.status}`);
+          console.log(`   Contract Time: ${contractTime}`);
+          console.log(`   Is Available: ${isAvailable}, Is Overdue: ${isOverdue}`);
+        }
+        
+        if (isOverdue && isAvailable) {
+          console.log(`⏰ OVERDUE: ${property.address} was due ${contractTime}, now ${now}`);
+        }
+        
+        return isAvailable && isOverdue;
+      });
+      
+      console.log(`🔍 Found ${readyProperties.length} properties ready for sale`);
+      
       const updatePromises: Promise<void>[] = [];
       let soldCount = 0;
       
-      snapshot.docs.forEach((docSnapshot) => {
+      readyProperties.forEach((docSnapshot) => {
         const property = docSnapshot.data();
         soldCount++;
         
@@ -121,7 +141,7 @@ export class PropertyTimelineService {
       const newPropertyPromises: Promise<any>[] = [];
       
       for (let i = 0; i < count; i++) {
-        const newProperty = generateProperty();
+        const newProperty = await generateProperty();
         console.log(`📦 New property: ${newProperty.address} (Class ${newProperty.class})`);
         
         newPropertyPromises.push(
@@ -151,15 +171,18 @@ export class PropertyTimelineService {
     
     // Process every minute
     setInterval(async () => {
+      console.log('🔍 Background processor checking for sales...');
       const soldCount = await this.processPropertySales();
       if (soldCount > 0) {
         console.log(`📊 Background processor: ${soldCount} properties sold this cycle`);
+      } else {
+        console.log('📊 Background processor: No properties ready to sell');
       }
     }, 60000); // Every minute
     
-    // Re-initialize any new properties every 5 minutes
-    setInterval(() => {
-      this.initializePropertyTimelines();
-    }, 5 * 60000);
+    // TESTING: Disabled auto re-initialization to prevent timeline resets
+    // setInterval(() => {
+    //   this.initializePropertyTimelines();
+    // }, 5 * 60000);
   }
 }

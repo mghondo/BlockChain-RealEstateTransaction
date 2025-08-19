@@ -1,5 +1,6 @@
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/config';
+// Rental Income Service - Manages rental income and property appreciation
+// 0.5 hour real time = 1 month game time (1440x acceleration)
+// Properties appreciate 8% annually (2% quarterly)
 
 interface RentalPayment {
   id?: string;

@@ -133,6 +133,13 @@ export const getRandomFromArray = <T>(array: T[]): T => {
   return array[Math.floor(Math.random() * array.length)];
 };
 
+// Utility function to capitalize each word
+export const toTitleCase = (str: string): string => {
+  return str.split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+  ).join(' ');
+};
+
 export const weightedRandomSelect = (weights: Record<PropertyClass, number>): PropertyClass => {
   const random = Math.random();
   let sum = 0;
@@ -177,8 +184,9 @@ export const getRandomUSState = (): string => {
 export const getRandomCityInState = (state: string): string => {
   const cities = US_CITIES_BY_STATE[state];
   if (!cities || cities.length === 0) {
-    // Fallback to generated city name
-    return `${getRandomFromArray(['North', 'South', 'East', 'West', 'New', 'Old', 'Mount', 'Lake'])} ${getRandomFromArray(['field', 'ville', 'town', 'burg', 'dale', 'ford', 'port', 'view'])}`;
+    // Fallback to generated city name with proper capitalization
+    const generatedName = `${getRandomFromArray(['North', 'South', 'East', 'West', 'New', 'Old', 'Mount', 'Lake'])} ${getRandomFromArray(['field', 'ville', 'town', 'burg', 'dale', 'ford', 'port', 'view'])}`;
+    return toTitleCase(generatedName);
   }
   return getRandomFromArray(cities);
 };

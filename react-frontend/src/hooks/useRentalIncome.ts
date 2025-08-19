@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { RentalIncomeService, RentalPayment, UserInvestment } from '../services/rentalIncomeService';
+import { rentalIncomeService, type RentalIncomePayment } from '../services/rentalIncomeServiceNew';
+import { useMockWallet } from './useMockWallet';
 
 interface RentalIncomeStats {
   propertiesOwned: number;

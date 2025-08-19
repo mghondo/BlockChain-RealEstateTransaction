@@ -125,14 +125,6 @@ export const GameClock: React.FC<GameClockProps> = ({ showDetailed = false }) =>
         />
       </Box>
       
-      <Box>
-        <Typography variant="h6" sx={{ fontWeight: 600, color: 'white', mb: 0.5 }}>
-          {formatGameDate(gameTime)}
-        </Typography>
-        <Typography variant="body2" color="text.secondary">
-          {formatGameTime(gameTime)}
-        </Typography>
-      </Box>
       
       {showDetailed && (
         <Box sx={{ 

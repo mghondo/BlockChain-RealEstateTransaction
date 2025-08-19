@@ -61,16 +61,23 @@ export class CryptoPriceService {
       console.error('Error fetching crypto prices:', error);
       
       if (this.priceCache.data) {
+        console.log('Using cached price data due to API error');
         return this.priceCache.data;
       }
 
-      return {
-        ethToUsd: 3000,
+      // Use realistic fallback prices for development
+      const fallbackPrices = {
+        ethToUsd: 3200, // More realistic current ETH price
         usdcToUsd: 1,
-        ethToUsdc: 3000,
+        ethToUsdc: 3200,
         lastUpdated: new Date(),
-        gasPrice: 20,
+        gasPrice: 25,
       };
+      
+      console.log('Using fallback price data:', fallbackPrices);
+      this.priceCache = { data: fallbackPrices, timestamp: now };
+      await this.savePricesToFirebase(fallbackPrices);
+      return fallbackPrices;
     }
   }
 

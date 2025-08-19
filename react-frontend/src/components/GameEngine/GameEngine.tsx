@@ -22,9 +22,15 @@ export const GameEngine: React.FC<GameEngineProps> = ({ children }) => {
   // Initialize session tracking
   useUserSession(account || '', gameTime || new Date());
   
-  // Handle offline progress completion
+  // Handle offline progress calculation and completion
   useEffect(() => {
-    if (offlineProgressCompleted && !showOfflineModal) {
+    if (isCalculatingOfflineProgress && !showOfflineModal) {
+      setShowOfflineModal(true);
+    }
+  }, [isCalculatingOfflineProgress, showOfflineModal]);
+
+  useEffect(() => {
+    if (offlineProgressCompleted && showOfflineModal) {
       // TODO: Get actual offline progress data from the hook
       // For now, we'll show the modal with placeholder data
       setOfflineProgress({
@@ -33,19 +39,19 @@ export const GameEngine: React.FC<GameEngineProps> = ({ children }) => {
         appreciation: 75.50, // This should come from background calculations
         newProperties: [], // This should come from property service
       });
-      setShowOfflineModal(true);
     }
   }, [offlineProgressCompleted, showOfflineModal]);
   
   const handleCloseOfflineModal = () => {
     setShowOfflineModal(false);
+    // Also ensure we don't show it again until next offline session
   };
   
   return (
     <>
       {children}
       <OfflineProgressModal
-        open={showOfflineModal || isCalculatingOfflineProgress}
+        open={showOfflineModal}
         onClose={handleCloseOfflineModal}
         progress={offlineProgress}
         isCalculating={isCalculatingOfflineProgress}

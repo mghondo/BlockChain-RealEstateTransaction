@@ -747,7 +747,7 @@ export default function FracEstatePropertyDetail() {
           )}
 
           <Alert severity="info" sx={{ mb: 2 }}>
-            This is a simulation. In a real application, this would integrate with blockchain smart contracts for actual investment processing.
+            🔗 Blockchain Investment: This will create actual transactions on Sepolia testnet with real smart contracts for property investment processing.
           </Alert>
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>

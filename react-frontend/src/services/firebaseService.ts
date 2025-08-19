@@ -21,11 +21,25 @@ import {
 import { db } from '../firebase/config';
 import { Property, PropertyFilters, PropertySortOptions, WatchlistItem, PropertyStatus } from '../types/property';
 
+// Simulation Wallet types
+export interface SimulationWallet {
+  id: string;
+  userId: string;
+  address: string;
+  ethBalance: number;
+  strikePrice: number; // ETH price when wallet was created
+  initialUsdValue: number; // Original USD value ($20,000)
+  createdAt: Timestamp;
+  username: string;
+  isActive: boolean;
+}
+
 // Collection names
 export const COLLECTIONS = {
   PROPERTIES: 'properties',
   WATCHLIST: 'watchlist',
-  PROPERTY_INTERACTIONS: 'property_interactions'
+  PROPERTY_INTERACTIONS: 'property_interactions',
+  SIMULATION_WALLETS: 'simulation_wallets'
 } as const;
 
 // Property Service
@@ -503,7 +517,200 @@ export class PropertyPoolService {
   }
 }
 
+// Simulation Wallet Service
+export class SimulationWalletService {
+  private static instance: SimulationWalletService;
+  
+  public static getInstance(): SimulationWalletService {
+    if (!SimulationWalletService.instance) {
+      SimulationWalletService.instance = new SimulationWalletService();
+    }
+    return SimulationWalletService.instance;
+  }
+
+  // Create a new simulation wallet
+  async createWallet(walletData: Omit<SimulationWallet, 'id' | 'createdAt'>): Promise<string> {
+    try {
+      const docRef = await addDoc(collection(db, COLLECTIONS.SIMULATION_WALLETS), {
+        ...walletData,
+        createdAt: serverTimestamp(),
+        isActive: true
+      });
+      
+      console.log('🎮 Simulation wallet created in Firebase:', docRef.id);
+      return docRef.id;
+    } catch (error) {
+      console.error('Error creating simulation wallet:', error);
+      throw new Error('Failed to create simulation wallet');
+    }
+  }
+
+  // Get wallet by user ID (simplified query to avoid index issues)
+  async getWalletByUserId(userId: string): Promise<SimulationWallet | null> {
+    try {
+      // Use a simpler query first, then filter in memory to avoid composite index requirement
+      const q = query(
+        collection(db, COLLECTIONS.SIMULATION_WALLETS),
+        where('userId', '==', userId),
+        limit(10) // Get up to 10 wallets and filter client-side
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      if (!querySnapshot.empty) {
+        // Filter for active wallets and sort by creation date (client-side)
+        const activeWallets = querySnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }) as SimulationWallet)
+          .filter(wallet => wallet.isActive)
+          .sort((a, b) => b.createdAt.seconds - a.createdAt.seconds);
+        
+        if (activeWallets.length > 0) {
+          return activeWallets[0]; // Return the most recent active wallet
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting wallet by user ID:', error);
+      throw new Error('Failed to get wallet');
+    }
+  }
+
+  // Get wallet by ID
+  async getWallet(walletId: string): Promise<SimulationWallet | null> {
+    try {
+      const docRef = doc(db, COLLECTIONS.SIMULATION_WALLETS, walletId);
+      const docSnap = await getDoc(docRef);
+      
+      if (docSnap.exists()) {
+        return {
+          id: docSnap.id,
+          ...docSnap.data()
+        } as SimulationWallet;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting wallet:', error);
+      throw new Error('Failed to get wallet');
+    }
+  }
+
+  // Update wallet balance (for transactions)
+  async updateWalletBalance(walletId: string, newEthBalance: number): Promise<void> {
+    try {
+      const docRef = doc(db, COLLECTIONS.SIMULATION_WALLETS, walletId);
+      await updateDoc(docRef, {
+        ethBalance: newEthBalance,
+        updatedAt: serverTimestamp()
+      });
+      
+      console.log('💰 Wallet balance updated:', { walletId, newEthBalance });
+    } catch (error) {
+      console.error('Error updating wallet balance:', error);
+      throw new Error('Failed to update wallet balance');
+    }
+  }
+
+  // Deactivate wallet (for cleanup or user disconnect)
+  async deactivateWallet(walletId: string): Promise<void> {
+    try {
+      const docRef = doc(db, COLLECTIONS.SIMULATION_WALLETS, walletId);
+      await updateDoc(docRef, {
+        isActive: false,
+        deactivatedAt: serverTimestamp()
+      });
+      
+      console.log('🔌 Wallet deactivated:', walletId);
+    } catch (error) {
+      console.error('Error deactivating wallet:', error);
+      throw new Error('Failed to deactivate wallet');
+    }
+  }
+
+  // Real-time listener for wallet changes
+  subscribeToWallet(
+    walletId: string,
+    callback: (wallet: SimulationWallet | null) => void
+  ): () => void {
+    try {
+      const docRef = doc(db, COLLECTIONS.SIMULATION_WALLETS, walletId);
+      
+      return onSnapshot(docRef, (docSnap) => {
+        if (docSnap.exists()) {
+          const wallet = {
+            id: docSnap.id,
+            ...docSnap.data()
+          } as SimulationWallet;
+          callback(wallet);
+        } else {
+          callback(null);
+        }
+      }, (error) => {
+        console.error('Error in wallet subscription:', error);
+        callback(null);
+      });
+    } catch (error) {
+      console.error('Error setting up wallet subscription:', error);
+      return () => {}; // Return no-op unsubscribe function
+    }
+  }
+
+  // Calculate current wallet value based on live ETH price
+  calculateCurrentValue(wallet: SimulationWallet, currentEthPrice: number): {
+    currentUsdValue: number;
+    profitLoss: number;
+    profitLossPercent: number;
+    priceChange: number;
+    priceChangePercent: number;
+    daysSinceCreation: number;
+  } {
+    const currentUsdValue = wallet.ethBalance * currentEthPrice;
+    const profitLoss = currentUsdValue - wallet.initialUsdValue;
+    const profitLossPercent = (profitLoss / wallet.initialUsdValue) * 100;
+    const priceChange = currentEthPrice - wallet.strikePrice;
+    const priceChangePercent = (priceChange / wallet.strikePrice) * 100;
+    
+    // Calculate days since creation
+    const createdDate = wallet.createdAt.toDate();
+    const daysSinceCreation = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+    
+    return {
+      currentUsdValue,
+      profitLoss,
+      profitLossPercent,
+      priceChange,
+      priceChangePercent,
+      daysSinceCreation
+    };
+  }
+
+  // Get all active wallets (for admin purposes)
+  async getAllActiveWallets(): Promise<SimulationWallet[]> {
+    try {
+      const q = query(
+        collection(db, COLLECTIONS.SIMULATION_WALLETS),
+        where('isActive', '==', true),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as SimulationWallet[];
+    } catch (error) {
+      console.error('Error getting all active wallets:', error);
+      throw new Error('Failed to get active wallets');
+    }
+  }
+}
+
 // Export service instances
 export const propertyService = PropertyService.getInstance();
 export const watchlistService = WatchlistService.getInstance();
 export const propertyPoolService = PropertyPoolService.getInstance();
+export const simulationWalletService = SimulationWalletService.getInstance();

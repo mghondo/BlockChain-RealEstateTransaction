@@ -177,7 +177,7 @@ export default function Dashboard() {
               </Box>
               
               <Typography variant="caption" color="text.secondary" display="block">
-                Safe simulation environment - no real funds at risk
+                Blockchain wallet connected - Sepolia Testnet
               </Typography>
             </Grid>
             
@@ -359,6 +359,19 @@ export default function Dashboard() {
             sx={{ mr: 2 }}
           >
             ⏰ Initialize Timelines
+          </Button>
+          <Button 
+            variant="outlined"
+            size="small"
+            onClick={async () => {
+              const { PropertyTimelineService } = await import('../../services/propertyTimelineService');
+              console.log('🔧 Manually triggering property sales check...');
+              const soldCount = await PropertyTimelineService.processPropertySales();
+              console.log(`Manual check result: ${soldCount} properties sold`);
+            }}
+            sx={{ mr: 2 }}
+          >
+            💰 Check Sales Now
           </Button>
           <Typography variant="caption" color="text.secondary">
             Development only: Creates sample properties and investments for testing rental income
