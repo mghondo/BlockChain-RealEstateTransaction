@@ -128,12 +128,11 @@ export class PropertyPoolManager {
   }
 
   /**
-   * Update property statuses based on time remaining
+   * Update property statuses and handle instant replacement for expired properties
    */
   private async updatePropertyStatuses(): Promise<void> {
     try {
       const now = Timestamp.now();
-      const thresholdMs = this.config.endingSoonThreshold * 60 * 1000;
 
       // Get properties that need status updates
       const [expiredProperties, endingSoonProperties] = await Promise.all([
@@ -141,25 +140,32 @@ export class PropertyPoolManager {
         propertyPoolService.getEndingSoonProperties(this.config.endingSoonThreshold)
       ]);
 
+      // INSTANT REPLACEMENT: Delete expired properties and generate new ones
+      if (expiredProperties.length > 0) {
+        console.log(`🔄 Instantly replacing ${expiredProperties.length} expired properties...`);
+        
+        // Use PropertyContractService instant replacement method
+        const { PropertyContractService } = await import('./propertyContractService');
+        const propertiesToReplace = expiredProperties.map(property => ({
+          docId: property.id,
+          property
+        }));
+        
+        await PropertyContractService.instantlyReplaceProperties(propertiesToReplace);
+        console.log(`✅ Instantly replaced ${expiredProperties.length} properties`);
+      }
+
+      // Update properties to ending soon status
       const statusUpdates: { id: string; status: PropertyStatus }[] = [];
-
-      // Mark expired properties as sold out
-      expiredProperties.forEach(property => {
-        if (property.status !== 'sold_out') {
-          statusUpdates.push({ id: property.id, status: 'sold_out' });
-        }
-      });
-
-      // Mark properties as ending soon
       endingSoonProperties.forEach(property => {
         if (property.status !== 'ending_soon') {
           statusUpdates.push({ id: property.id, status: 'ending_soon' });
         }
       });
 
-      // Batch update statuses
+      // Batch update ending soon statuses
       if (statusUpdates.length > 0) {
-        console.log(`Updating status for ${statusUpdates.length} properties`);
+        console.log(`Updating ${statusUpdates.length} properties to ending soon`);
         await propertyService.updatePropertyStatusesBatch(statusUpdates);
       }
 
@@ -182,8 +188,7 @@ export class PropertyPoolManager {
         await this.replenishPool();
       }
 
-      // Clean up old sold out properties (optional)
-      await this.cleanupOldProperties();
+      // Note: No cleanup needed since expired properties are instantly replaced
 
       // Validate class distribution
       await this.validatePoolDistribution();
@@ -235,20 +240,6 @@ export class PropertyPoolManager {
     }
   }
 
-  /**
-   * Clean up old sold out properties
-   */
-  private async cleanupOldProperties(): Promise<void> {
-    try {
-      const cleaned = await propertyPoolService.cleanupSoldOutProperties(this.config.cleanupRetentionDays);
-      
-      if (cleaned > 0) {
-        console.log(`Cleaned up ${cleaned} old properties`);
-      }
-    } catch (error) {
-      console.error('Failed to cleanup old properties:', error);
-    }
-  }
 
   /**
    * Validate and correct class distribution
@@ -299,7 +290,6 @@ export class PropertyPoolManager {
     total: number;
     available: number;
     endingSoon: number;
-    soldOut: number;
     classDistribution: { A: number; B: number; C: number };
     isHealthy: boolean;
   }> {
@@ -319,7 +309,6 @@ export class PropertyPoolManager {
         total: properties.length,
         available: counts.available,
         endingSoon: counts.ending_soon,
-        soldOut: counts.sold_out,
         classDistribution,
         isHealthy
       };

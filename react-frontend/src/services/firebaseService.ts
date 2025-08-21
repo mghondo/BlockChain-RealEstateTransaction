@@ -292,16 +292,14 @@ export class PropertyService {
   // Get properties count by status
   async getPropertiesCountByStatus(): Promise<Record<PropertyStatus, number>> {
     try {
-      const [available, endingSoon, soldOut] = await Promise.all([
+      const [available, endingSoon] = await Promise.all([
         getDocs(query(collection(db, COLLECTIONS.PROPERTIES), where('status', '==', 'available'))),
-        getDocs(query(collection(db, COLLECTIONS.PROPERTIES), where('status', '==', 'ending_soon'))),
-        getDocs(query(collection(db, COLLECTIONS.PROPERTIES), where('status', '==', 'sold_out')))
+        getDocs(query(collection(db, COLLECTIONS.PROPERTIES), where('status', '==', 'ending_soon')))
       ]);
 
       return {
         available: available.size,
-        ending_soon: endingSoon.size,
-        sold_out: soldOut.size
+        ending_soon: endingSoon.size
       };
     } catch (error) {
       console.error('Error getting properties count:', error);
@@ -488,33 +486,6 @@ export class PropertyPoolService {
     }
   }
 
-  // Clean up sold out properties (optional - for maintenance)
-  async cleanupSoldOutProperties(keepDays: number = 7): Promise<number> {
-    try {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - keepDays);
-      const cutoffTimestamp = Timestamp.fromDate(cutoffDate);
-
-      const q = query(
-        collection(db, COLLECTIONS.PROPERTIES),
-        where('status', '==', 'sold_out'),
-        where('selloutTime', '<', cutoffTimestamp)
-      );
-
-      const querySnapshot = await getDocs(q);
-      const batch = writeBatch(db);
-      
-      querySnapshot.docs.forEach(doc => {
-        batch.delete(doc.ref);
-      });
-
-      await batch.commit();
-      return querySnapshot.size;
-    } catch (error) {
-      console.error('Error cleaning up sold out properties:', error);
-      return 0;
-    }
-  }
 }
 
 // Simulation Wallet Service

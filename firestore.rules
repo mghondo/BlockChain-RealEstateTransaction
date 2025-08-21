@@ -1,0 +1,56 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow read access to users' own profile data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped properties - each user has their own private property portfolio
+    match /users/{userId}/properties/{propertyId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped watchlist
+    match /users/{userId}/watchlist/{watchlistId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped property interactions (analytics)
+    match /users/{userId}/property_interactions/{interactionId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped rental income data
+    match /users/{userId}/rental_income/{incomeId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped portfolio data
+    match /users/{userId}/portfolio/{portfolioId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped transactions
+    match /users/{userId}/transactions/{transactionId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped game state
+    match /users/{userId}/game_state/{stateId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // User-scoped wallet data
+    match /users/{userId}/wallet/{walletId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Deny access to all other documents
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

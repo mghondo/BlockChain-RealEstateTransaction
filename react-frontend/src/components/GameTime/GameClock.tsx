@@ -101,7 +101,9 @@ export const GameClock: React.FC<GameClockProps> = ({ showDetailed = false }) =>
     <Box sx={{ 
       backgroundColor: 'rgba(255, 255, 255, 0.05)', 
       borderRadius: 2, 
-      p: 2, 
+      pt: 2, 
+      px: 2, 
+      pb: 0, 
       border: '1px solid rgba(255, 255, 255, 0.1)' 
     }}>
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>

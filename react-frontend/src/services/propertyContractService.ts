@@ -83,13 +83,13 @@ export class PropertyContractService {
   }
 
   /**
-   * Check for properties that should go pending now and process pending → sold cycle
+   * Check for properties that should go pending/sold now and process lifecycle
    */
   static async processContractUpdates(currentGameTime: Date): Promise<Property[]> {
     try {
       const now = new Date();
       
-      // Step 1: Get properties that should go pending (contractTime <= now and status still 'for-sale')
+      // Step 1: Get properties that should transition (contractTime <= now and status still 'for-sale')
       const contractQuery = query(
         collection(db, 'properties'),
         where('status', '==', 'for-sale'),
@@ -97,62 +97,20 @@ export class PropertyContractService {
       );
       
       const contractSnapshot = await getDocs(contractQuery);
-      const newlyPendingProperties: Property[] = [];
-      const contractUpdatePromises: Promise<void>[] = [];
-      
-      contractSnapshot.docs.forEach((docSnapshot) => {
+      // Instead of setting status to pending/sold, we'll delete old properties and create new ones instantly
+      const propertiesToReplace = contractSnapshot.docs.map(docSnapshot => {
         const property = docSnapshot.data() as Property;
-        newlyPendingProperties.push(property);
-        
-        console.log(`⏳ Property ${property.id} (${property.title || property.address}) going pending!`);
-        
-        contractUpdatePromises.push(
-          updateDoc(doc(db, 'properties', docSnapshot.id), {
-            status: 'pending',
-            pendingStartTime: serverTimestamp(),
-            gameTimeWhenPending: currentGameTime
-          })
-        );
+        console.log(`🔄 Property ${property.id} (Class ${property.class} - ${property.title || property.address}) reached end of lifecycle - replacing instantly`);
+        return { docId: docSnapshot.id, property };
       });
       
-      await Promise.all(contractUpdatePromises);
-      
-      // Step 2: Check for properties that have been pending for 10+ minutes and should be sold/replaced
-      const tenMinutesAgo = new Date(now.getTime() - (10 * 60 * 1000));
-      const pendingQuery = query(
-        collection(db, 'properties'),
-        where('status', '==', 'pending'),
-        where('pendingStartTime', '<=', tenMinutesAgo)
-      );
-      
-      const pendingSnapshot = await getDocs(pendingQuery);
-      const replacementPromises: Promise<void>[] = [];
-      
-      pendingSnapshot.docs.forEach((docSnapshot) => {
-        const property = docSnapshot.data() as Property;
-        
-        console.log(`✅ Property ${property.id} (${property.title || property.address}) completed pending period - marking for replacement`);
-        
-        replacementPromises.push(
-          updateDoc(doc(db, 'properties', docSnapshot.id), {
-            status: 'sold',
-            replacementScheduled: true
-          })
-        );
-      });
-      
-      await Promise.all(replacementPromises);
-      
-      // Step 3: Generate new properties to replace sold ones
-      if (pendingSnapshot.docs.length > 0) {
-        await this.replaceProperties(pendingSnapshot.docs.length);
+      if (propertiesToReplace.length > 0) {
+        await this.instantlyReplaceProperties(propertiesToReplace);
+        console.log(`🔄 Replaced ${propertiesToReplace.length} properties instantly`);
       }
       
-      if (newlyPendingProperties.length > 0) {
-        console.log(`⏳ ${newlyPendingProperties.length} properties went pending`);
-      }
-      
-      return newlyPendingProperties;
+      // Return empty array since no properties go "pending" anymore - they're instantly replaced
+      return [];
       
     } catch (error) {
       console.error('❌ Error processing contract updates:', error);
@@ -161,7 +119,42 @@ export class PropertyContractService {
   }
 
   /**
-   * Replace sold properties with new ones
+   * Instantly replace properties that have reached end of lifecycle
+   */
+  static async instantlyReplaceProperties(propertiesToReplace: { docId: string; property: any }[]): Promise<void> {
+    try {
+      console.log(`🔄 Instantly replacing ${propertiesToReplace.length} properties...`);
+      
+      // Import the property generator and Firebase functions
+      const { generateProperty } = await import('../utils/propertyGenerator');
+      const { deleteDoc, addDoc, collection } = await import('firebase/firestore');
+      
+      const replacementPromises: Promise<any>[] = [];
+      
+      // For each property to replace, delete the old one and create a new one
+      propertiesToReplace.forEach(({ docId, property }) => {
+        console.log(`🗑️ Deleting old property: ${property.address} (Class ${property.class})`);
+        
+        // Delete the old property
+        replacementPromises.push(deleteDoc(doc(db, 'properties', docId)));
+        
+        // Generate and add a new property
+        const newProperty = generateProperty();
+        console.log(`✨ Creating new property: ${newProperty.address} (Class ${newProperty.class})`);
+        
+        replacementPromises.push(addDoc(collection(db, 'properties'), newProperty));
+      });
+      
+      await Promise.all(replacementPromises);
+      console.log(`✅ Successfully replaced ${propertiesToReplace.length} properties instantly`);
+      
+    } catch (error) {
+      console.error('❌ Error during instant property replacement:', error);
+    }
+  }
+
+  /**
+   * Replace sold properties with new ones (legacy method)
    */
   static async replaceProperties(count: number): Promise<void> {
     try {
@@ -195,7 +188,7 @@ export class PropertyContractService {
    */
   static getContractTimingDisplay(propertyClass: PropertyClass): string {
     const timing = CONTRACT_TIMINGS[propertyClass];
-    return `Expected to contract in ${timing.gameYears}`;
+    return `Will cycle out in ${timing.gameYears}`;
   }
 
   /**

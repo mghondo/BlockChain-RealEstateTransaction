@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Property, PropertyStatus } from '../types/property';
-import { propertyService } from '../services/firebaseService';
-import { propertyPoolManager } from '../services/propertyPoolManager';
+import { userScopedPropertyService } from '../services/userScopedFirebaseService';
+import { UserScopedPropertyPoolManager } from '../services/userScopedPropertyPoolManager';
+import { useAuth } from '../contexts/AuthContext';
 
-interface PropertyPoolState {
+interface UserPropertyPoolState {
   properties: Property[];
   loading: boolean;
   error: string | null;
@@ -16,16 +17,16 @@ interface PropertyPoolState {
   } | null;
 }
 
-interface UsePropertyPoolReturn extends PropertyPoolState {
+interface UseUserPropertyPoolReturn extends UserPropertyPoolState {
   refreshProperties: () => Promise<void>;
-  startPoolManager: () => Promise<void>;
-  stopPoolManager: () => void;
   getPoolStats: () => Promise<void>;
   isPoolManagerRunning: boolean;
+  poolManager: UserScopedPropertyPoolManager | null;
 }
 
-export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
-  const [state, setState] = useState<PropertyPoolState>({
+export function useUserScopedPropertyPool(): UseUserPropertyPoolReturn {
+  const { user, isAuthenticated } = useAuth();
+  const [state, setState] = useState<UserPropertyPoolState>({
     properties: [],
     loading: true,
     error: null,
@@ -33,18 +34,22 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
   });
   
   const [isPoolManagerRunning, setIsPoolManagerRunning] = useState(false);
+  const [poolManager, setPoolManager] = useState<UserScopedPropertyPoolManager | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const statusUpdateIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start listening to property changes
+  // Start listening to property changes for the authenticated user
   const startPropertyListener = useCallback(() => {
+    if (!user?.uid) return;
+
     // Clean up existing listener
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
     }
 
-    // Subscribe to real-time property updates
-    unsubscribeRef.current = propertyService.subscribeToProperties(
+    // Subscribe to real-time property updates for this user
+    unsubscribeRef.current = userScopedPropertyService.subscribeToProperties(
+      user.uid,
       (properties) => {
         setState(prev => ({
           ...prev,
@@ -55,7 +60,7 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
       },
       { status: ['available', 'ending_soon'] } // Get all active properties
     );
-  }, []);
+  }, [user?.uid]);
 
   // Update property statuses based on time
   const updatePropertyStatuses = useCallback(() => {
@@ -80,36 +85,12 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
     }));
   }, []);
 
-  // Start the property pool manager
-  const startPoolManager = useCallback(async () => {
-    try {
-      if (!propertyPoolManager.isManagerRunning()) {
-        await propertyPoolManager.start();
-        setIsPoolManagerRunning(true);
-        console.log('Property pool manager started');
-      }
-    } catch (error) {
-      console.error('Failed to start property pool manager:', error);
-      setState(prev => ({
-        ...prev,
-        error: 'Failed to start property pool manager'
-      }));
-    }
-  }, []);
-
-  // Stop the property pool manager
-  const stopPoolManager = useCallback(() => {
-    if (propertyPoolManager.isManagerRunning()) {
-      propertyPoolManager.stop();
-      setIsPoolManagerRunning(false);
-      console.log('Property pool manager stopped');
-    }
-  }, []);
-
   // Get current pool statistics
   const getPoolStats = useCallback(async () => {
+    if (!poolManager) return;
+
     try {
-      const stats = await propertyPoolManager.getPoolStats();
+      const stats = await poolManager.getPoolStats();
       setState(prev => ({
         ...prev,
         poolStats: stats
@@ -117,14 +98,17 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
     } catch (error) {
       console.error('Failed to get pool stats:', error);
     }
-  }, []);
+  }, [poolManager]);
 
   // Refresh properties manually
   const refreshProperties = useCallback(async () => {
+    if (!user?.uid) return;
+
     try {
       setState(prev => ({ ...prev, loading: true, error: null }));
       
-      const properties = await propertyService.getProperties(
+      const properties = await userScopedPropertyService.getProperties(
+        user.uid,
         { status: ['available', 'ending_soon'] },
         { field: 'createdAt', direction: 'desc' }
       );
@@ -142,28 +126,51 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
         error: 'Failed to refresh properties'
       }));
     }
-  }, []);
+  }, [user?.uid]);
 
-  // Initialize the hook
+  // Initialize the hook when user changes
   useEffect(() => {
+    if (!isAuthenticated || !user?.uid) {
+      // Clean up when user logs out
+      if (unsubscribeRef.current) {
+        unsubscribeRef.current();
+        unsubscribeRef.current = null;
+      }
+      if (statusUpdateIntervalRef.current) {
+        clearInterval(statusUpdateIntervalRef.current);
+        statusUpdateIntervalRef.current = null;
+      }
+      setState({
+        properties: [],
+        loading: true,
+        error: null,
+        poolStats: null
+      });
+      setPoolManager(null);
+      setIsPoolManagerRunning(false);
+      return;
+    }
+
     const initialize = async () => {
       try {
+        // Get pool manager for this user
+        const manager = UserScopedPropertyPoolManager.getInstance(user.uid);
+        setPoolManager(manager);
+        setIsPoolManagerRunning(manager.isManagerRunning());
+
         // Start property listener
         startPropertyListener();
 
-        // Auto-start pool manager if requested
-        if (autoStart) {
-          await startPoolManager();
-        }
-
         // Get initial pool stats
-        await getPoolStats();
+        if (manager.isManagerRunning()) {
+          await getPoolStats();
+        }
 
         // Start client-side status updates
         statusUpdateIntervalRef.current = setInterval(updatePropertyStatuses, 60000); // Every minute
 
       } catch (error) {
-        console.error('Failed to initialize property pool:', error);
+        console.error('Failed to initialize user property pool:', error);
         setState(prev => ({
           ...prev,
           loading: false,
@@ -183,19 +190,21 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
         clearInterval(statusUpdateIntervalRef.current);
       }
     };
-  }, [autoStart, startPropertyListener, startPoolManager, getPoolStats, updatePropertyStatuses]);
+  }, [user?.uid, isAuthenticated, startPropertyListener, getPoolStats, updatePropertyStatuses]);
 
   // Update pool manager running status
   useEffect(() => {
+    if (!poolManager) return;
+
     const checkManagerStatus = () => {
-      setIsPoolManagerRunning(propertyPoolManager.isManagerRunning());
+      setIsPoolManagerRunning(poolManager.isManagerRunning());
     };
 
     // Check status periodically
     const statusInterval = setInterval(checkManagerStatus, 5000);
     
     return () => clearInterval(statusInterval);
-  }, []);
+  }, [poolManager]);
 
   // Handle page visibility changes to update timers
   useEffect(() => {
@@ -216,17 +225,15 @@ export function usePropertyPool(autoStart = true): UsePropertyPoolReturn {
   return {
     ...state,
     refreshProperties,
-    startPoolManager,
-    stopPoolManager,
     getPoolStats,
-    isPoolManagerRunning
+    isPoolManagerRunning,
+    poolManager
   };
 }
 
-// Hook for individual property timer management
+// Hook for individual property timer management (unchanged)
 export function usePropertyTimer(property: Property) {
   const [timeRemaining, setTimeRemaining] = useState<string>('');
-  const [status, setStatus] = useState<PropertyStatus>(property.status);
 
   useEffect(() => {
     const updateTimer = () => {
@@ -256,30 +263,25 @@ export function usePropertyTimer(property: Property) {
       }
 
       setTimeRemaining(display);
-
-      // Update status based on time remaining
-      const thirtyMinutes = 30 * 60 * 1000;
-      if (timeDiff <= thirtyMinutes && status === 'available') {
-        setStatus('ending_soon');
-      }
     };
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000); // Update every second for live countdown
 
     return () => clearInterval(interval);
-  }, [property.selloutTime, status]);
+  }, [property.selloutTime]);
 
   return {
     timeRemaining,
-    status,
+    status: property.status,
     isExpired: timeRemaining === 'Expired',
-    isEndingSoon: status === 'ending_soon'
+    isEndingSoon: property.status === 'ending_soon'
   };
 }
 
 // Hook for property pool statistics
-export function usePropertyPoolStats() {
+export function useUserPropertyPoolStats() {
+  const { user } = useAuth();
   const [stats, setStats] = useState<{
     total: number;
     available: number;
@@ -292,10 +294,13 @@ export function usePropertyPoolStats() {
   const [error, setError] = useState<string | null>(null);
 
   const refreshStats = useCallback(async () => {
+    if (!user?.uid) return;
+
     try {
       setLoading(true);
       setError(null);
-      const poolStats = await propertyPoolManager.getPoolStats();
+      const poolManager = UserScopedPropertyPoolManager.getInstance(user.uid);
+      const poolStats = await poolManager.getPoolStats();
       setStats(poolStats);
     } catch (err) {
       console.error('Failed to get pool stats:', err);
@@ -303,16 +308,22 @@ export function usePropertyPoolStats() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.uid]);
 
   useEffect(() => {
+    if (!user?.uid) {
+      setStats(null);
+      setLoading(false);
+      return;
+    }
+
     refreshStats();
     
     // Refresh stats every 5 minutes
     const interval = setInterval(refreshStats, 5 * 60 * 1000);
     
     return () => clearInterval(interval);
-  }, [refreshStats]);
+  }, [refreshStats, user?.uid]);
 
   return {
     stats,

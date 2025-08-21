@@ -2,7 +2,7 @@ import { Timestamp } from 'firebase/firestore';
 
 export type PropertyClass = 'A' | 'B' | 'C';
 
-export type PropertyStatus = 'available' | 'ending_soon' | 'sold_out';
+export type PropertyStatus = 'available' | 'ending_soon';
 
 export type PropertyRegion = 'Midwest' | 'Southwest' | 'Southeast' | 'Northwest' | 'Anywhere';
 

@@ -35,8 +35,8 @@ export const GameEngine: React.FC<GameEngineProps> = ({ children }) => {
       // For now, we'll show the modal with placeholder data
       setOfflineProgress({
         gameMonthsElapsed: 3, // This should come from the hook
-        rentalIncome: 150.25, // This should come from background calculations
-        appreciation: 75.50, // This should come from background calculations
+        rentalIncome: 0, // Set to zero until rental income system is implemented
+        appreciation: 0, // Set to zero until appreciation system is implemented
         newProperties: [], // This should come from property service
       });
     }

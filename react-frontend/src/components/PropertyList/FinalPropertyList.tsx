@@ -24,16 +24,15 @@ import {
   InputLabel
 } from '@mui/material';
 import { FilterList, ExpandMore, ExpandLess, Share, AttachMoney, Search } from '@mui/icons-material';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase/config';
+import { useUserScopedPropertyPool } from '../../hooks/useUserScopedPropertyPool';
+import { useAuth } from '../../contexts/AuthContext';
 import { PropertyDetailModal } from '../PropertyDetail/PropertyDetailModal';
 import { getRentalIncomeDisplay } from '../../utils/rentalCalculations';
 import { backfillPropertyTimestamps } from '../../utils/backfillPropertyTimestamps';
 
 export default function FinalPropertyList() {
-  const [properties, setProperties] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { isAuthenticated } = useAuth();
+  const { properties, loading, error, refreshProperties } = useUserScopedPropertyPool();
   const [currentPage, setCurrentPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -108,31 +107,6 @@ export default function FinalPropertyList() {
     'WY': 'Wyoming - WY'
   };
 
-  const loadProperties = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      console.log('🔄 Loading properties for display...');
-      
-      const snapshot = await getDocs(collection(db, 'properties'));
-      const docs = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      
-      // Shuffle properties for randomized display order
-      const shuffledDocs = docs.sort(() => Math.random() - 0.5);
-      
-      console.log(`📦 Loaded ${docs.length} properties for display (shuffled)`);
-      setProperties(shuffledDocs);
-      setCurrentPage(1); // Reset to first page when refreshing
-      setLoading(false);
-    } catch (err) {
-      console.error('❌ Error:', err);
-      setError('Failed to load properties');
-      setLoading(false);
-    }
-  };
 
   // Calculate price for comparison (total or per shares)
   const getComparisonPrice = (property: any) => {
@@ -292,13 +266,19 @@ export default function FinalPropertyList() {
 
   const classRanges = getClassRanges();
 
-  useEffect(() => {
-    // Backfill timestamps for existing properties (one-time operation)
-    backfillPropertyTimestamps().then(() => {
-      // Then load properties
-      loadProperties();
-    });
-  }, []);
+  // Show authentication prompt if user is not logged in
+  if (!isAuthenticated) {
+    return (
+      <Box sx={{ p: 4, textAlign: 'center' }}>
+        <Typography variant="h5" gutterBottom>
+          🔐 Please Sign In
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          You need to be signed in to view your property portfolio.
+        </Typography>
+      </Box>
+    );
+  }
 
   useEffect(() => {
     // Initialize individual class price ranges when properties load or search mode changes
@@ -332,7 +312,7 @@ export default function FinalPropertyList() {
     return (
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" color="error" gutterBottom>Error: {error}</Typography>
-        <Button variant="contained" onClick={loadProperties}>Retry</Button>
+        <Button variant="contained" onClick={refreshProperties}>Retry</Button>
       </Box>
     );
   }
@@ -788,9 +768,11 @@ export default function FinalPropertyList() {
                   <Typography variant="body2" color={
                     property.status === 'available' ? 'success.main' :
                     property.status === 'ending_soon' ? 'warning.main' :
-                    'error.main'
+                    'success.main'
                   }>
-                    {property.status === 'sold_out' ? 'Pending' : (property.status || 'unknown')}
+                    {property.status === 'available' ? 'Available' :
+                     property.status === 'ending_soon' ? 'Ending Soon' :
+                     'Available'}
                   </Typography>
                 </Box>
                 

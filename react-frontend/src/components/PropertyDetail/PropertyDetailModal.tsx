@@ -323,6 +323,31 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                   <Typography variant="h4" color="primary.main" sx={{ fontWeight: 700, mb: 1 }}>
                     ${(property.price || 0).toLocaleString()}
                   </Typography>
+                  {/* Gas Price Display */}
+                  {prices?.gasPrice && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                      <Box 
+                        sx={{ 
+                          width: 6, 
+                          height: 6, 
+                          backgroundColor: 'success.main',
+                          borderRadius: '50%',
+                          animation: 'gasFlicker 0.3s infinite',
+                          '@keyframes gasFlicker': {
+                            '0%, 50%': {
+                              backgroundColor: 'success.main'
+                            },
+                            '51%, 100%': {
+                              backgroundColor: '#2e7d58'
+                            }
+                          }
+                        }} 
+                      />
+                      <Typography variant="body2" color="text.secondary">
+                        Gas: {prices.gasPrice} gwei
+                      </Typography>
+                    </Box>
+                  )}
                   {searchMode === 'shares' && (
                     <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
                       Price for {numberOfShares} Share{numberOfShares !== 1 ? 's' : ''}: ${calculateSharePrice().toLocaleString()}

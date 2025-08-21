@@ -144,19 +144,37 @@ export default function NewHeader() {
         {/* Game Clock */}
         <GameClock />
 
-        {/* Crypto Price Display */}
-        <PriceDisplay compact className="hidden md:flex mr-2" />
+        {/* Crypto Price Display - Hidden from header, available for property purchase and dashboard */}
+        {/* <PriceDisplay compact className="hidden md:flex mr-2" /> */}
 
         {/* Balance Display */}
         {isConnected && (
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
-            <Chip
-              label={`${formatBalance(ethBalance)} ETH`}
-              variant="outlined"
-              size="small"
-              color="primary"
-              sx={{ mr: 1 }}
-            />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
+              <Box 
+                sx={{ 
+                  width: 8, 
+                  height: 8, 
+                  backgroundColor: 'success.main',
+                  borderRadius: '50%',
+                  animation: 'priceFlicker 0.2s infinite',
+                  '@keyframes priceFlicker': {
+                    '0%, 50%': {
+                      backgroundColor: 'success.main'
+                    },
+                    '51%, 100%': {
+                      backgroundColor: '#2e7d58'
+                    }
+                  }
+                }} 
+              />
+              <Chip
+                label={`${formatBalance(ethBalance)} ETH`}
+                variant="outlined"
+                size="small"
+                color="primary"
+              />
+            </Box>
             {mode === 'simulation' && volatilityData ? (
               <Tooltip title={`Strike Price: $${volatilityData.daysSinceCreation > 0 ? `${strikePrice?.toFixed(0)} (${volatilityData.daysSinceCreation} days ago)` : strikePrice?.toFixed(0)}`}>
                 <Chip
@@ -197,15 +215,6 @@ export default function NewHeader() {
           </Box>
         )}
 
-        {/* Mode Badge */}
-        {isConnected && (
-          <Chip
-            label="🎮 Simulation Mode"
-            color="primary"
-            size="small"
-            sx={{ mr: 2 }}
-          />
-        )}
 
         {/* Wallet Connection */}
         {!isConnected ? (
@@ -244,7 +253,6 @@ export default function NewHeader() {
             <Typography variant="subtitle2" color="text.secondary">
               {mode === 'simulation' ? '🎮 Game Wallet Connected' : '🔗 Test Wallet Connected'}
             </Typography>
-            <Chip label="Simulation Mode" color="secondary" size="small" />
           </Box>
           
           <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>

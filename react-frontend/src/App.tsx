@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline, Box } from '@mui/material';
 import { Web3Provider } from './contexts/Web3Context';
+import { AuthProvider } from './contexts/AuthContext';
 import NewHeader from './components/Header/NewHeader';
 import PropertyList from './components/PropertyList/PropertyList';
 import FracEstatePropertyList from './components/PropertyList/FracEstatePropertyList';
@@ -22,6 +23,7 @@ import { initializeFracEstate } from './utils/initializeFracEstate';
 import { GameEngine } from './components/GameEngine/GameEngine';
 import { usePropertyTimeline } from './hooks/usePropertyTimeline';
 import { testTimelineSystem } from './utils/testTimeline';
+import { AuthTest } from './components/Test/AuthTest';
 
 // Create dark theme matching the crypto aesthetic
 const darkTheme = createTheme({
@@ -163,8 +165,9 @@ function App() {
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
       <ErrorBoundary>
-        <Web3Provider>
-          <GameEngine>
+        <AuthProvider>
+          <Web3Provider>
+            <GameEngine>
             <Router>
               <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
                 <NewHeader />
@@ -177,6 +180,7 @@ function App() {
                     <Route path="/property/:id" element={<FracEstatePropertyDetail />} />
                     <Route path="/watchlist" element={<Watchlist />} />
                     <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/auth-test" element={<AuthTest />} />
                     {/* Legacy routes for backward compatibility */}
                     <Route path="/legacy/properties" element={<PropertyList />} />
                     <Route path="/legacy/property/:id" element={<PropertyDetail />} />
@@ -185,8 +189,9 @@ function App() {
                 </Box>
               </Box>
             </Router>
-          </GameEngine>
-        </Web3Provider>
+            </GameEngine>
+          </Web3Provider>
+        </AuthProvider>
       </ErrorBoundary>
     </ThemeProvider>
   );
