@@ -243,7 +243,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({ compact = false, cla
           </Box>
 
           {/* USDC */}
-          <Box 
+          {/* <Box 
             sx={{ 
               display: 'flex', 
               justifyContent: 'space-between', 
@@ -290,7 +290,7 @@ export const PriceDisplay: React.FC<PriceDisplayProps> = ({ compact = false, cla
             <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main' }}>
               {formatPrice(prices.usdcToUsd)}
             </Typography>
-          </Box>
+          </Box> */}
         </Box>
 
         <Divider sx={{ my: 2 }} />

@@ -27,6 +27,7 @@ import { FilterList, ExpandMore, ExpandLess, Share, AttachMoney, Search } from '
 import { useUserScopedPropertyPool } from '../../hooks/useUserScopedPropertyPool';
 import { useAuth } from '../../contexts/AuthContext';
 import { PropertyDetailModal } from '../PropertyDetail/PropertyDetailModal';
+import { PropertyPurchaseModal } from '../Purchase/PropertyPurchaseModal';
 import { getRentalIncomeDisplay } from '../../utils/rentalCalculations';
 import { backfillPropertyTimestamps } from '../../utils/backfillPropertyTimestamps';
 
@@ -46,8 +47,9 @@ export default function FinalPropertyList() {
   const [searchMode, setSearchMode] = useState('total'); // 'total' or 'shares'
   const [numberOfShares, setNumberOfShares] = useState(1); // Number of shares to calculate price for
   const [selectedState, setSelectedState] = useState('all'); // Selected state filter
-  const [selectedProperty, setSelectedProperty] = useState<any | null>(null); // Property for modal
-  const [modalOpen, setModalOpen] = useState(false); // Modal open state
+  const [selectedProperty, setSelectedProperty] = useState<any | null>(null); // Property for modals
+  const [detailModalOpen, setDetailModalOpen] = useState(false); // Detail modal open state
+  const [purchaseModalOpen, setPurchaseModalOpen] = useState(false); // Purchase modal open state
   const [searchTerm, setSearchTerm] = useState(''); // Search functionality
   
   const PROPERTIES_PER_PAGE = 20;
@@ -201,12 +203,29 @@ export default function FinalPropertyList() {
 
   const handlePropertyClick = (property: any) => {
     setSelectedProperty(property);
-    setModalOpen(true);
+    setDetailModalOpen(true);
   };
 
-  const handleModalClose = () => {
-    setModalOpen(false);
+  const handlePurchaseClick = (property: any, event?: React.MouseEvent) => {
+    event?.stopPropagation(); // Prevent triggering property click
+    setSelectedProperty(property);
+    setPurchaseModalOpen(true);
+  };
+
+  const handleDetailModalClose = () => {
+    setDetailModalOpen(false);
     setSelectedProperty(null);
+  };
+
+  const handlePurchaseModalClose = () => {
+    setPurchaseModalOpen(false);
+    setSelectedProperty(null);
+  };
+
+  const handlePurchaseSuccess = (shares: number, amount: number) => {
+    console.log(`Successfully purchased ${shares} shares for ${amount} ETH`);
+    // Refresh properties to update available shares
+    refreshProperties();
   };
 
   // Check if property is newly listed (within 30 minutes)
@@ -812,6 +831,27 @@ export default function FinalPropertyList() {
                 <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
                   {property.region || 'Unknown'} Region
                 </Typography>
+
+                {/* View Details Button */}
+                <Box sx={{ mt: 2, display: 'flex', gap: 1 }}>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    size="small"
+                    fullWidth
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePropertyClick(property);
+                    }}
+                    sx={{ 
+                      fontWeight: 600,
+                      textTransform: 'none',
+                      borderRadius: '8px'
+                    }}
+                  >
+                    View Details & Purchase
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
@@ -842,11 +882,19 @@ export default function FinalPropertyList() {
 
       {/* Property Detail Modal */}
       <PropertyDetailModal
-        open={modalOpen}
-        onClose={handleModalClose}
+        open={detailModalOpen}
+        onClose={handleDetailModalClose}
         property={selectedProperty}
         searchMode={searchMode}
         numberOfShares={numberOfShares}
+      />
+
+      {/* Property Purchase Modal */}
+      <PropertyPurchaseModal
+        open={purchaseModalOpen}
+        onClose={handlePurchaseModalClose}
+        property={selectedProperty}
+        onSuccess={handlePurchaseSuccess}
       />
     </Box>
   );

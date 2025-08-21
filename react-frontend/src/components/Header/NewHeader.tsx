@@ -26,6 +26,7 @@ import {
 } from '@mui/icons-material';
 import { useMockWallet } from '../../hooks/useMockWallet';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
+import { useAuth } from '../../contexts/AuthContext';
 import { MockWallet } from '../MockWallet/MockWallet';
 import { GameClock } from '../GameTime/GameClock';
 import { PriceDisplay } from '../Currency/PriceDisplay';
@@ -33,6 +34,7 @@ import { PriceDisplay } from '../Currency/PriceDisplay';
 export default function NewHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { isAuthenticated, user, logout } = useAuth();
   
   const {
     isConnected,
@@ -53,7 +55,7 @@ export default function NewHeader() {
     getWalletPerformance,
     volatilityData,
     firebaseWallet
-  } = useMockWallet();
+  } = useMockWallet({ userId: user?.uid });
 
   const { prices } = useCryptoPrices();
 
@@ -62,9 +64,11 @@ export default function NewHeader() {
   const [showDisconnectWarning, setShowDisconnectWarning] = useState(false);
 
   const navigationItems = [
-    { label: 'Home', path: '/' },
-    { label: 'Properties', path: '/properties' },
-    ...(isConnected ? [{ label: 'Dashboard', path: '/dashboard' }] : [])
+    ...(isAuthenticated ? [
+      { label: 'Properties', path: '/properties' },
+      { label: 'Dashboard', path: '/dashboard' },
+      { label: 'Watchlist', path: '/watchlist' }
+    ] : [])
   ];
 
   // Restore wallet on component mount
@@ -74,6 +78,13 @@ export default function NewHeader() {
 
   const handleNavClick = (path: string) => {
     console.log('🚀 Navigation clicked for path:', path);
+    
+    // If user clicks on home (/) and they're not authenticated, redirect to auth
+    if (path === '/' && !isAuthenticated) {
+      navigate('/auth');
+      return;
+    }
+    
     navigate(path);
   };
 
@@ -215,31 +226,20 @@ export default function NewHeader() {
           </Box>
         )}
 
-
-        {/* Wallet Connection */}
-        {!isConnected ? (
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleConnectWallet}
-            disabled={isLoading}
-            startIcon={isLoading ? <CircularProgress size={16} /> : <AccountBalanceWallet />}
-          >
-            {isLoading ? 'Connecting...' : 'Connect Test Wallet'}
-          </Button>
-        ) : (
-          <Button
-            variant="outlined"
-            onClick={(e) => setWalletMenuAnchor(e.currentTarget)}
-            startIcon={<AccountBalanceWallet />}
-            endIcon={<KeyboardArrowDown />}
-          >
-            View Wallet
-          </Button>
-        )}
+        {/* Combined Wallet & Account Menu */}
+        <Button
+          variant={isConnected ? "outlined" : "contained"}
+          color="primary"
+          onClick={(e) => setWalletMenuAnchor(e.currentTarget)}
+          disabled={isLoading}
+          startIcon={isLoading ? <CircularProgress size={16} /> : <AccountBalanceWallet />}
+          endIcon={<KeyboardArrowDown />}
+        >
+          {isLoading ? 'Connecting...' : isConnected ? 'Account' : 'Account'}
+        </Button>
       </Toolbar>
 
-      {/* Wallet Menu */}
+      {/* Combined Wallet & Account Menu */}
       <Menu
         anchorEl={walletMenuAnchor}
         open={Boolean(walletMenuAnchor)}
@@ -248,12 +248,63 @@ export default function NewHeader() {
           sx: { minWidth: 320 }
         }}
       >
-        <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <Typography variant="subtitle2" color="text.secondary">
-              {mode === 'simulation' ? '🎮 Game Wallet Connected' : '🔗 Test Wallet Connected'}
+        {/* Authentication Section */}
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          {!isAuthenticated ? (
+            <>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                👤 Account
+              </Typography>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => { navigate('/auth'); setWalletMenuAnchor(null); }}
+                sx={{ mb: 1 }}
+              >
+                Sign In / Register
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                Sign in to sync your portfolio across devices
+              </Typography>
+            </>
+          ) : (
+            <>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                👤 Signed in as
+              </Typography>
+              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+                {user?.displayName || user?.email?.split('@')[0]}
+              </Typography>
+              {user?.email && user?.displayName && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
+                  {user.email}
+                </Typography>
+              )}
+              <Button
+                fullWidth
+                variant="outlined"
+                size="small"
+                onClick={() => { logout(); setWalletMenuAnchor(null); }}
+                startIcon={<Close />}
+              >
+                Sign Out
+              </Button>
+            </>
+          )}
+        </Box>
+
+        {/* Wallet Section - Only show when authenticated */}
+        {isAuthenticated && (
+          <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider' }}>
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              💎 Test Wallet
             </Typography>
-          </Box>
+            
+            {isConnected ? (
+          <>
+            <Typography variant="body2" color="success.main" sx={{ mb: 2, fontWeight: 600 }}>
+              {mode === 'simulation' ? '🎮 Connected' : '🔗 Connected'}
+            </Typography>
           
           <Typography variant="body2" sx={{ fontFamily: 'monospace', mb: 1 }}>
             {address}
@@ -300,17 +351,40 @@ export default function NewHeader() {
             ) : null}
           </Box>
           
-          <Typography variant="caption" color="text.secondary" display="block">
+          <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
             Game wallet with realistic crypto volatility
           </Typography>
-        </Box>
-        
-        <Divider />
-        
-        <MenuItem onClick={handleDisconnect}>
-          <Close sx={{ mr: 1 }} />
-          Disconnect Test Wallet
-        </MenuItem>
+          
+          <Divider sx={{ my: 2 }} />
+          
+          <Button
+            fullWidth
+            variant="outlined"
+            onClick={() => { handleDisconnect(); setWalletMenuAnchor(null); }}
+            startIcon={<Close />}
+            size="small"
+          >
+            Disconnect Wallet
+          </Button>
+          </>
+          ) : (
+            <>
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => { handleConnectWallet(); setWalletMenuAnchor(null); }}
+                startIcon={<AccountBalanceWallet />}
+                sx={{ mb: 1 }}
+              >
+                Connect Test Wallet
+              </Button>
+              <Typography variant="caption" color="text.secondary">
+                Connect a game wallet to start trading properties
+              </Typography>
+            </>
+            )}
+          </Box>
+        )}
       </Menu>
 
       {/* Mock Wallet Modal */}
@@ -328,15 +402,23 @@ export default function NewHeader() {
         fullWidth
       >
         <DialogTitle sx={{ pb: 1 }}>
-          ⚠️ Disconnect Test Wallet
+          ⚠️ Disconnect Test Wallet & Clear All Data
         </DialogTitle>
         <DialogContent>
-          <Typography>
-            Disconnecting your test wallet will remove your real estate holdings and portfolio data. 
-            This action cannot be undone.
+          <Typography gutterBottom>
+            Disconnecting your test wallet will <strong>permanently remove ALL</strong> of the following:
           </Typography>
-          <Typography sx={{ mt: 2, fontWeight: 600, color: 'warning.main' }}>
-            Proceed with disconnect?
+          <Box component="ul" sx={{ mt: 1, mb: 2, pl: 3 }}>
+            <li>Property investments and ownership records</li>
+            <li>Transaction history and purchase data</li>
+            <li>Portfolio performance and rental income</li>
+            <li>Wallet balance and simulation data</li>
+          </Box>
+          <Typography sx={{ fontWeight: 600, color: 'error.main', mt: 2 }}>
+            🗑️ This action cannot be undone!
+          </Typography>
+          <Typography sx={{ mt: 1, fontSize: '0.875rem', color: 'text.secondary' }}>
+            You'll start fresh with a new wallet if you connect again.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>
@@ -353,7 +435,7 @@ export default function NewHeader() {
             color="error"
             sx={{ fontWeight: 600 }}
           >
-            Yes, Disconnect
+            🗑️ Clear All Data & Disconnect
           </Button>
         </DialogActions>
       </Dialog>

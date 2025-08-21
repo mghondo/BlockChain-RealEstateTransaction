@@ -24,6 +24,7 @@ import { GameEngine } from './components/GameEngine/GameEngine';
 import { usePropertyTimeline } from './hooks/usePropertyTimeline';
 import { testTimelineSystem } from './utils/testTimeline';
 import { AuthTest } from './components/Test/AuthTest';
+import { AuthPage, ProtectedRoute } from './components/Auth';
 
 // Create dark theme matching the crypto aesthetic
 const darkTheme = createTheme({
@@ -173,17 +174,62 @@ function App() {
                 <NewHeader />
                 <Box component="main" sx={{ flexGrow: 1 }}>
                   <Routes>
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/properties" element={<FinalPropertyList />} />
-                    <Route path="/properties/simple" element={<SimplePropertyList />} />
-                    <Route path="/properties/full" element={<FracEstatePropertyList />} />
-                    <Route path="/property/:id" element={<FracEstatePropertyDetail />} />
-                    <Route path="/watchlist" element={<Watchlist />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
+                    {/* Home route - redirect to auth if not logged in */}
+                    <Route path="/" element={
+                      <ProtectedRoute>
+                        <LandingPage />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/auth" element={<AuthPage />} />
+                    
+                    {/* Protected routes - require authentication */}
+                    <Route path="/properties" element={
+                      <ProtectedRoute>
+                        <FinalPropertyList />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/properties/simple" element={
+                      <ProtectedRoute>
+                        <SimplePropertyList />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/properties/full" element={
+                      <ProtectedRoute>
+                        <FracEstatePropertyList />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/property/:id" element={
+                      <ProtectedRoute>
+                        <FracEstatePropertyDetail />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/watchlist" element={
+                      <ProtectedRoute>
+                        <Watchlist />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute>
+                        <Dashboard />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Test routes */}
                     <Route path="/auth-test" element={<AuthTest />} />
+                    
                     {/* Legacy routes for backward compatibility */}
-                    <Route path="/legacy/properties" element={<PropertyList />} />
-                    <Route path="/legacy/property/:id" element={<PropertyDetail />} />
+                    <Route path="/legacy/properties" element={
+                      <ProtectedRoute>
+                        <PropertyList />
+                      </ProtectedRoute>
+                    } />
+                    <Route path="/legacy/property/:id" element={
+                      <ProtectedRoute>
+                        <PropertyDetail />
+                      </ProtectedRoute>
+                    } />
+                    
+                    {/* Catch all route */}
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </Box>

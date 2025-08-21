@@ -21,6 +21,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useMockWallet } from '../../hooks/useMockWallet';
 import { MockWallet } from '../MockWallet/MockWallet';
+import { useAuth } from '../../contexts/AuthContext';
 import { TimelineDebug } from '../Debug/TimelineDebug';
 import type { PropertyClass } from '../../types/property';
 import imageInventory from '../../utils/imageInventory.json';
@@ -113,7 +114,8 @@ const getRandomBackgroundImages = (): BackgroundImage[] => {
 
 export default function LandingPage() {
   const navigate = useNavigate();
-  const { isConnected, restoreWallet, connectWallet } = useMockWallet();
+  const { user } = useAuth();
+  const { isConnected, restoreWallet, connectWallet } = useMockWallet({ userId: user?.uid });
   const [backgroundImages, setBackgroundImages] = useState<BackgroundImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [showWalletModal, setShowWalletModal] = useState(false);

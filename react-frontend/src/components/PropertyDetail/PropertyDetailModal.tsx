@@ -15,7 +15,9 @@ import {
   ListItemText,
   ListItemIcon,
   TextField,
-  InputAdornment
+  InputAdornment,
+  Button,
+  Alert
 } from '@mui/material';
 import {
   Close,
@@ -26,11 +28,15 @@ import {
   CalendarToday,
   TrendingUp,
   CheckCircle,
-  AttachMoney
+  AttachMoney,
+  ShoppingCart,
+  AccountBalanceWallet
 } from '@mui/icons-material';
 import { calculateRentalIncome, formatRentalIncome } from '../../utils/rentalCalculations';
 import { useMockWallet } from '../../hooks/useMockWallet';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
+import { PurchaseTransactionService } from '../../services/purchaseTransactionService';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PropertyDetailModalProps {
   open: boolean;
@@ -48,6 +54,10 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   numberOfShares = 1
 }) => {
   const [modalShares, setModalShares] = useState(numberOfShares);
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
+  const [purchaseSuccess, setPurchaseSuccess] = useState(false);
+  const [coInvestors, setCoInvestors] = useState<Array<{name: string, shares: number}>>([]);
   
   // Real wallet data with volatility functions
   const { 
@@ -55,20 +65,19 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     isConnected, 
     address, 
     mode, 
-    restoreWallet,
     strikePrice,
     createdAt,
     initialUsdValue,
     getCurrentUsdValue,
     getProfitLoss,
-    getWalletPerformance
+    getWalletPerformance,
+    hasEnoughBalance,
+    refreshWallet
   } = useMockWallet();
   const { getUsdValue, convertCurrency, prices } = useCryptoPrices();
+  const { user } = useAuth();
 
-  // Restore wallet on component mount
-  useEffect(() => {
-    restoreWallet();
-  }, [restoreWallet]);
+  // Wallet auto-restores from Firebase, no manual restore needed
 
   // Debug wallet connection state
   useEffect(() => {
@@ -82,10 +91,160 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     });
   }, [isConnected, ethBalance, address, mode]);
   
-  if (!property) return null;
+  if (!property) {
+    console.warn('PropertyDetailModal: No property provided');
+    return null;
+  }
 
+  // Calculate user's cost for their share percentage (returns cost in ETH)
   const calculateSharePrice = () => {
-    return Math.round((property.price || 0) / 100 * numberOfShares);
+    // Get the FIXED total property price in USD
+    const totalPropertyPriceUSD = getTotalPropertyPrice();
+    
+    const userSharePercentage = modalShares / 100; // e.g., 2 shares = 2%
+    const userCostUSD = totalPropertyPriceUSD * userSharePercentage;
+    
+    // Convert USD cost to ETH cost for payment
+    const ethToUsdRate = prices?.ethToUsd || 4462;
+    const userCostETH = userCostUSD / ethToUsdRate;
+    
+    // Debug logging
+    console.log(`🔍 Share Calculation Debug:`);
+    console.log(`  FIXED Total Property Price: $${totalPropertyPriceUSD.toLocaleString()} USD`);
+    console.log(`  User Shares: ${modalShares} (${userSharePercentage * 100}%)`);
+    console.log(`  User Cost: $${userCostUSD.toLocaleString()} USD = ${userCostETH.toFixed(4)} ETH`);
+    console.log(`  ETH/USD Rate: $${ethToUsdRate}`);
+    console.log(`  Property Data:`, {
+      sharePrice: property.sharePrice,
+      currentValue: property.currentValue, 
+      price: property.price,
+      'sharePrice * 100': property.sharePrice ? property.sharePrice * 100 : 'N/A'
+    });
+    
+    return userCostETH;
+  };
+
+  // Get consistent total property price in USD across all calculations
+  const getTotalPropertyPrice = () => {
+    // sharePrice is actually the price PER SHARE (1% ownership) in USD, so multiply by 100 to get total
+    // OR use currentValue/price directly (they represent the full property value in USD)
+    if (property.sharePrice && property.sharePrice > 0) {
+      return property.sharePrice * 100; // sharePrice * 100 shares = total property value in USD
+    } else if (property.currentValue && property.currentValue > 0) {
+      return property.currentValue; // currentValue is the full property value in USD
+    } else if (property.price && property.price > 0) {
+      return property.price; // price is the full property value in USD
+    } else {
+      return 0;
+    }
+  };
+
+  const getSharePriceInUSD = () => {
+    // Get the total property price in USD and calculate user's portion
+    const totalPropertyPriceUSD = getTotalPropertyPrice();
+    const userSharePercentage = modalShares / 100;
+    const userCostUSD = totalPropertyPriceUSD * userSharePercentage;
+    return userCostUSD;
+  };
+
+  const getPricePerShare = () => {
+    // Get price per share in ETH (convert from USD)
+    const totalPropertyPriceUSD = getTotalPropertyPrice();
+    const pricePerShareUSD = totalPropertyPriceUSD / 100; // Price for 1% ownership (1 share) in USD
+    const ethToUsdRate = prices?.ethToUsd || 4462;
+    const pricePerShareETH = pricePerShareUSD / ethToUsdRate;
+    return pricePerShareETH;
+  };
+
+  // Generate co-investors to fill remaining shares
+  const generateCoInvestors = (userShares: number) => {
+    const remainingShares = 100 - userShares;
+    if (remainingShares <= 0) return [];
+
+    const investors = [];
+    let sharesLeft = remainingShares;
+    
+    // Generate 2-5 co-investors
+    const numInvestors = Math.min(Math.floor(Math.random() * 4) + 2, Math.max(2, remainingShares));
+    
+    const generateUsername = () => {
+      const prefixes = ['investor', 'trader', 'prop', 'real', 'crypto', 'fund', 'build'];
+      const suffixes = Math.floor(Math.random() * 99) + 1;
+      const letters = String.fromCharCode(97 + Math.floor(Math.random() * 26)) + 
+                     String.fromCharCode(97 + Math.floor(Math.random() * 26));
+      return `${prefixes[Math.floor(Math.random() * prefixes.length)]}${letters}${suffixes}`;
+    };
+    
+    for (let i = 0; i < numInvestors && sharesLeft > 0; i++) {
+      const isLast = i === numInvestors - 1;
+      const maxShares = isLast ? sharesLeft : Math.min(Math.floor(sharesLeft * 0.6), sharesLeft - (numInvestors - i - 1));
+      const investorShares = Math.max(1, Math.floor(Math.random() * maxShares) + 1);
+      
+      investors.push({
+        name: generateUsername(),
+        shares: investorShares
+      });
+
+      sharesLeft -= investorShares;
+    }
+
+    return investors;
+  };
+
+  const handlePurchase = async () => {
+    if (!user?.uid || !property || modalShares <= 0) return;
+    
+    setIsPurchasing(true);
+    setPurchaseError(null);
+    
+    try {
+      // Generate co-investors before purchase
+      const investors = generateCoInvestors(modalShares);
+      setCoInvestors(investors);
+      
+      console.log(`🏠 Simulated purchase: User gets ${modalShares}% ownership`);
+      console.log(`👥 Co-investors:`, investors.map(inv => `${inv.name}: ${inv.shares}%`));
+      
+      const result = await PurchaseTransactionService.processPurchase(
+        user.uid,
+        property,
+        modalShares,
+        ethBalance,
+        prices?.ethToUsd || 4462
+      );
+      
+      if (result.success) {
+        setPurchaseSuccess(true);
+        console.log(`✅ Purchase completed: ${modalShares}% ownership for ${calculateSharePrice().toFixed(4)} ETH`);
+        
+        // Show wallet balance before refresh
+        console.log('💰 Wallet balance BEFORE refresh:', ethBalance.toFixed(4), 'ETH');
+        
+        // Refresh wallet to show updated balance
+        console.log('🔄 Refreshing wallet after successful purchase...');
+        await refreshWallet();
+        
+        // Check wallet balance after refresh (with slight delay)
+        setTimeout(() => {
+          console.log('💰 Wallet balance AFTER refresh:', ethBalance.toFixed(4), 'ETH');
+        }, 1000);
+        
+        // Close modal after 3 seconds to show success and co-investors
+        setTimeout(() => {
+          onClose();
+          setPurchaseSuccess(false);
+          setCoInvestors([]);
+        }, 3000);
+      } else {
+        setPurchaseError(result.error || 'Purchase failed');
+        setCoInvestors([]);
+      }
+    } catch (error) {
+      setPurchaseError(error instanceof Error ? error.message : 'Purchase failed');
+      setCoInvestors([]);
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   const getRentalIncome = () => {
@@ -541,9 +700,28 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     helperText={`Max ${Math.min(100, property.availableShares || 85)} available shares`}
                     sx={{ minWidth: 200 }}
                   />
-                  <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600, mt: 1 }}>
-                    Price: {modalShares === 0 ? '$0' : `$${Math.round((property.price || 0) / 100 * modalShares).toLocaleString()}`}
-                  </Typography>
+                  <Box sx={{ mt: 2, p: 2, bgcolor: 'primary.50', borderRadius: 2, border: '1px solid', borderColor: 'primary.200' }}>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      Investment Cost
+                    </Typography>
+                    {modalShares === 0 ? (
+                      <Typography variant="h5" color="text.secondary">
+                        Select shares to see price
+                      </Typography>
+                    ) : (
+                      <>
+                        <Typography variant="h5" color="primary.main" sx={{ fontWeight: 700 }}>
+                          {calculateSharePrice().toFixed(4)} ETH
+                        </Typography>
+                        <Typography variant="h6" color="success.main" sx={{ fontWeight: 600 }}>
+                          ≈ ${getSharePriceInUSD().toLocaleString(undefined, { maximumFractionDigits: 2 })} USD
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                          {modalShares}% ownership of ${getTotalPropertyPrice().toLocaleString()} USD property
+                        </Typography>
+                      </>
+                    )}
+                  </Box>
                 </Box>
                 <Grid container spacing={2} sx={{ mb: 2 }}>
                   <Grid item xs={12} md={6}>
@@ -609,18 +787,121 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                       Price per Share
                     </Typography>
                     <Typography variant="h6">
-                      ${Math.round((property.price || 0) / 100).toLocaleString()}
+                      {getPricePerShare().toFixed(4)} ETH
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      ≈ ${(getPricePerShare() * (prices?.ethToUsd || 4462)).toLocaleString(undefined, { maximumFractionDigits: 0 })} (per 1% share)
                     </Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
-                      Your Investment ({modalShares} shares)
+                      Your Investment ({modalShares}% ownership)
                     </Typography>
                     <Typography variant="h6" color="success.main">
-                      {modalShares === 0 ? '$0' : `$${Math.round((property.price || 0) / 100 * modalShares).toLocaleString()}`}
+                      {modalShares === 0 ? '0 ETH' : `${calculateSharePrice().toFixed(4)} ETH`}
+                    </Typography>
+                    <Typography variant="body2" color="success.main">
+                      {modalShares === 0 ? '$0' : `≈ $${getSharePriceInUSD().toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
                     </Typography>
                   </Grid>
                 </Grid>
+
+                {/* Purchase Section */}
+                <Box sx={{ mt: 3, p: 2, bgcolor: 'grey.50', borderRadius: 2 }}>
+                  {purchaseSuccess && (
+                    <Box sx={{ mb: 2 }}>
+                      <Alert severity="success" sx={{ mb: 2 }}>
+                        🎉 Purchase successful! You now own {modalShares}% of this property. Check your dashboard for details.
+                      </Alert>
+                      {coInvestors.length > 0 && (
+                        <Card sx={{ bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                          <CardContent sx={{ py: 2 }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                              👥 Your Co-Investors
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                              Other investors have joined to fully fund this property:
+                            </Typography>
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {coInvestors.map((investor, index) => (
+                                <Chip 
+                                  key={index}
+                                  label={`${investor.name}: ${investor.shares}%`}
+                                  size="small"
+                                  variant="outlined"
+                                  color="success"
+                                />
+                              ))}
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      )}
+                    </Box>
+                  )}
+                  
+                  {purchaseError && (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      {purchaseError}
+                    </Alert>
+                  )}
+                  
+                  {!user?.uid ? (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      Please sign in to purchase property shares
+                    </Alert>
+                  ) : !isConnected ? (
+                    <Alert severity="warning" sx={{ mb: 2 }}>
+                      Please connect your wallet to purchase shares
+                    </Alert>
+                  ) : modalShares <= 0 ? (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                      Select the number of shares you want to purchase
+                    </Alert>
+                  ) : !hasEnoughBalance(calculateSharePrice()) ? (
+                    <Alert severity="error" sx={{ mb: 2 }}>
+                      Insufficient balance. You need {calculateSharePrice().toFixed(4)} ETH but have {ethBalance.toFixed(4)} ETH
+                    </Alert>
+                  ) : null}
+                  
+                  <Button
+                    variant="contained"
+                    size="large"
+                    fullWidth
+                    startIcon={isPurchasing ? null : <ShoppingCart />}
+                    onClick={handlePurchase}
+                    disabled={
+                      isPurchasing || 
+                      !user?.uid || 
+                      !isConnected || 
+                      modalShares <= 0 || 
+                      !hasEnoughBalance(calculateSharePrice()) ||
+                      purchaseSuccess
+                    }
+                    sx={{
+                      py: 1.5,
+                      fontSize: '1.1rem',
+                      fontWeight: 600,
+                      background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
+                      '&:hover': {
+                        background: 'linear-gradient(45deg, #1976D2 30%, #1BA3E0 90%)',
+                      },
+                      '&:disabled': {
+                        background: 'grey.300',
+                      }
+                    }}
+                  >
+                    {isPurchasing ? 'Processing Purchase...' :
+                     purchaseSuccess ? '✅ Purchase Complete!' :
+                     modalShares <= 0 ? 'Select Shares to Purchase' :
+                     `Purchase ${modalShares}% Ownership for ${calculateSharePrice().toFixed(4)} ETH`}
+                  </Button>
+                  
+                  {modalShares > 0 && hasEnoughBalance(calculateSharePrice()) && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, textAlign: 'center' }}>
+                      ≈ ${getSharePriceInUSD().toLocaleString(undefined, { maximumFractionDigits: 2 })} USD
+                    </Typography>
+                  )}
+                </Box>
               </Box>
 
               {/* Amenities */}

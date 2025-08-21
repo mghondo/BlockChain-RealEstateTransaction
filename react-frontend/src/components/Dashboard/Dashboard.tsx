@@ -24,11 +24,15 @@ import { PortfolioOverview } from '../Portfolio/PortfolioOverview';
 import { setupTestInvestments } from '../../utils/createSampleData';
 import { DashboardCharts } from './DashboardCharts';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
+import { useAuth } from '../../contexts/AuthContext';
+import { useUserInvestments } from '../../hooks/useUserInvestments';
 import { AccountBalanceWallet, ContentCopy, LocationOn, TrendingUp as TrendingUpIcon } from '@mui/icons-material';
 
 export default function Dashboard() {
-  const { isConnected, address, ethBalance, restoreWallet, formatAddress, formatBalance } = useMockWallet();
+  const { user } = useAuth();
+  const { isConnected, address, ethBalance, restoreWallet, formatAddress, formatBalance } = useMockWallet({ userId: user?.uid });
   const { prices } = useCryptoPrices();
+  const { investments, portfolioSummary, loading: investmentsLoading, error: investmentsError } = useUserInvestments();
 
   // Restore wallet on component mount
   useEffect(() => {
@@ -60,45 +64,43 @@ export default function Dashboard() {
     );
   }
 
-  // Mock user properties data - in a real app this would come from a hook/API
-  const userProperties = [
-    {
-      id: '1',
-      address: '123 Blockchain Avenue',
-      city: 'Miami',
-      state: 'FL',
-      class: 'A' as const,
-      sharesOwned: 25,
-      invested: 12500,
-      currentValue: 13750,
-      monthlyIncome: 425.50,
-      status: 'Active' as const
-    },
-    {
-      id: '2', 
-      address: '456 DeFi Street',
-      city: 'Austin',
-      state: 'TX',
-      class: 'B' as const,
-      sharesOwned: 15,
-      invested: 7500,
-      currentValue: 8100,
-      monthlyIncome: 245.25,
-      status: 'Active' as const
-    },
-    {
-      id: '3',
-      address: '789 Smart Contract Boulevard',
-      city: 'Denver',
-      state: 'CO', 
-      class: 'C' as const,
-      sharesOwned: 40,
-      invested: 8000,
-      currentValue: 8480,
-      monthlyIncome: 320.75,
-      status: 'Under Review' as const
-    }
-  ];
+  // Transform real investment data to match the existing UI structure
+  const userProperties = investments.map(investment => {
+    console.log(`🏠 Transforming investment for UI:`, {
+      address: investment.propertyAddress,
+      purchaseUsdValue: investment.purchaseUsdValue,
+      totalReturn: investment.totalReturn,
+      monthlyRentalIncome: investment.monthlyRentalIncome,
+      sharesOwned: investment.sharesOwned,
+      bedrooms: investment.propertyBedrooms,
+      bathrooms: investment.propertyBathrooms,
+      sqft: investment.propertySqft
+    });
+    
+    return {
+      id: investment.id,
+      address: investment.propertyAddress,
+      city: investment.propertyCity,
+      state: investment.propertyState,
+      class: investment.propertyClass as 'A' | 'B' | 'C',
+      sharesOwned: investment.sharesOwned,
+      invested: Math.round(investment.purchaseUsdValue || 0), // USD invested
+      currentValue: Math.round((investment.purchaseUsdValue || 0) + (investment.totalReturn || 0)), // Current USD value
+      monthlyIncome: investment.monthlyRentalIncome || 0,
+      status: 'Active' as const,
+      // Additional real data for enhanced display
+      imageUrl: investment.propertyImageUrl,
+      totalRentalEarned: investment.totalRentalEarned || 0,
+      appreciationAmount: investment.appreciationAmount || 0,
+      totalReturnPercentage: investment.totalReturnPercentage || 0,
+      ownershipPercentage: investment.ownershipPercentage || 0,
+      purchaseDate: investment.purchaseDate,
+      bedrooms: investment.propertyBedrooms || 0,
+      bathrooms: investment.propertyBathrooms || 0,
+      sqft: investment.propertySqft || 0,
+      yearBuilt: investment.propertyYearBuilt || 0
+    };
+  });
 
   // Mock data for demonstration
   const portfolioStats = {
@@ -108,35 +110,16 @@ export default function Dashboard() {
     monthlyIncome: '$425'
   };
 
-  const investments = [
-    {
-      id: '1',
-      address: '123 Blockchain Ave, Crypto City',
-      invested: '$5,000',
-      currentValue: '$5,500',
-      shares: 50,
-      monthlyIncome: '$85',
-      status: 'Active'
-    },
-    {
-      id: '2',
-      address: '456 DeFi Street, Web3 Town',
-      invested: '$10,000',
-      currentValue: '$11,000',
-      shares: 100,
-      monthlyIncome: '$180',
-      status: 'Active'
-    },
-    {
-      id: '3',
-      address: '789 Smart Contract Blvd',
-      invested: '$10,000',
-      currentValue: '$11,000',
-      shares: 75,
-      monthlyIncome: '$160',
-      status: 'Under Inspection'
-    }
-  ];
+  // Convert investments for the old Investment List section (keeping for now)
+  const legacyInvestmentFormat = investments.map(investment => ({
+    id: investment.id,
+    address: `${investment.propertyAddress}, ${investment.propertyCity}, ${investment.propertyState}`,
+    invested: `$${Math.round(investment.purchaseUsdValue).toLocaleString()}`,
+    currentValue: `$${Math.round(investment.purchaseUsdValue + investment.totalReturn).toLocaleString()}`,
+    shares: investment.sharesOwned,
+    monthlyIncome: `$${Math.round(investment.monthlyRentalIncome)}`,
+    status: 'Active'
+  }));
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
@@ -212,10 +195,30 @@ export default function Dashboard() {
             <Typography variant="h6">
               Your Properties
             </Typography>
-            <Chip label={`${userProperties.length} Properties`} size="small" color="primary" />
+            <Chip 
+              label={investmentsLoading ? 'Loading...' : `${userProperties.length} Properties`} 
+              size="small" 
+              color="primary" 
+            />
+            {portfolioSummary && (
+              <Chip 
+                label={`$${Math.round(portfolioSummary.totalInvestedUSD).toLocaleString()} Invested`} 
+                size="small" 
+                color="success" 
+                sx={{ ml: 1 }}
+              />
+            )}
           </Box>
 
-          {userProperties.length === 0 ? (
+          {investmentsLoading ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1">Loading your properties...</Typography>
+            </Box>
+          ) : investmentsError ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <Typography variant="body1" color="error">Error: {investmentsError}</Typography>
+            </Box>
+          ) : userProperties.length === 0 ? (
             <Box sx={{ textAlign: 'center', py: 4 }}>
               <Home sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
               <Typography variant="h6" color="text.secondary" gutterBottom>
@@ -250,36 +253,71 @@ export default function Dashboard() {
                     }
                   }}
                 >
-                  {/* Property Info */}
+                  {/* Property Info with Image */}
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
+                    {/* Property Image */}
                     <Box
                       sx={{
-                        width: 40,
-                        height: 40,
+                        width: 60,
+                        height: 60,
                         borderRadius: 2,
-                        bgcolor: property.class === 'A' ? '#FFD700' : 
-                                 property.class === 'B' ? '#C0C0C0' : '#CD7F32',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#000',
-                        fontWeight: 700,
-                        fontSize: '0.875rem'
+                        overflow: 'hidden',
+                        position: 'relative',
+                        bgcolor: 'grey.200'
                       }}
                     >
-                      {property.class}
+                      <img
+                        src={property.imageUrl}
+                        alt={property.address}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover'
+                        }}
+                        onError={(e) => {
+                          // Fallback to class badge if image fails
+                          const target = e.target as HTMLElement;
+                          target.style.display = 'none';
+                        }}
+                      />
+                      {/* Class Badge Overlay */}
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          top: 4,
+                          right: 4,
+                          width: 20,
+                          height: 20,
+                          borderRadius: 1,
+                          bgcolor: property.class === 'A' ? '#FFD700' : 
+                                   property.class === 'B' ? '#C0C0C0' : '#CD7F32',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#000',
+                          fontWeight: 700,
+                          fontSize: '0.75rem'
+                        }}
+                      >
+                        {property.class}
+                      </Box>
                     </Box>
                     
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body1" sx={{ fontWeight: 600 }}>
                         {property.address}
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                         <LocationOn sx={{ fontSize: 14, color: 'text.secondary' }} />
                         <Typography variant="caption" color="text.secondary">
                           {property.city}, {property.state}
+                          {property.bedrooms > 0 && property.bathrooms > 0 && ` • ${property.bedrooms}bed/${property.bathrooms}bath`}
+                          {property.sqft > 0 && ` • ${property.sqft.toLocaleString()} sqft`}
                         </Typography>
                       </Box>
+                      <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600 }}>
+                        Purchased {new Date(property.purchaseDate).toLocaleDateString()}
+                      </Typography>
                     </Box>
                   </Box>
 
@@ -318,6 +356,29 @@ export default function Dashboard() {
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
                         ${property.monthlyIncome.toFixed(0)}/mo
+                      </Typography>
+                      {property.totalRentalEarned > 0 && (
+                        <Typography variant="caption" color="success.main" sx={{ display: 'block' }}>
+                          +${property.totalRentalEarned.toFixed(0)} earned
+                        </Typography>
+                      )}
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        Total Return
+                      </Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          fontWeight: 600, 
+                          color: property.totalReturnPercentage >= 0 ? 'success.main' : 'error.main' 
+                        }}
+                      >
+                        {property.totalReturnPercentage >= 0 ? '+' : ''}{property.totalReturnPercentage.toFixed(1)}%
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        ${(property.currentValue - property.invested).toFixed(0)}
                       </Typography>
                     </Box>
 
@@ -464,7 +525,7 @@ export default function Dashboard() {
       </Typography>
       
       <Grid container spacing={3}>
-        {investments.map((investment) => (
+        {legacyInvestmentFormat.map((investment) => (
           <Grid item xs={12} md={6} lg={4} key={investment.id}>
             <Card>
               <CardContent>
@@ -532,7 +593,7 @@ export default function Dashboard() {
       </Grid>
 
       {/* Empty State */}
-      {investments.length === 0 && (
+      {legacyInvestmentFormat.length === 0 && (
         <Card>
           <CardContent sx={{ textAlign: 'center', py: 6 }}>
             <Home sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />

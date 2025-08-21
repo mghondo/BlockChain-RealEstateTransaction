@@ -1,7 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
 import { WalletData, MockWalletData, RealWalletData } from '../components/MockWallet/MockWallet';
 import { simulationWalletService, SimulationWallet } from '../services/firebaseService';
+import { UserScopedWalletService, UserWallet } from '../services/userScopedWalletService';
+import { UserDataCleanupService } from '../services/userDataCleanupService';
 import { useCryptoPrices } from './useCryptoPrices';
+import { useAuth } from '../contexts/AuthContext';
 
 interface WalletState {
   isConnected: boolean;
@@ -28,8 +31,24 @@ interface VolatilityData {
   daysSinceCreation: number;
 }
 
-export const useMockWallet = () => {
+interface UseMockWalletProps {
+  userId?: string; // Authenticated user ID from Firebase Auth
+}
+
+// Global event emitter for wallet refreshes
+const walletRefreshListeners = new Set<() => void>();
+
+const emitWalletRefresh = () => {
+  walletRefreshListeners.forEach(listener => listener());
+};
+
+export const useMockWallet = (props?: UseMockWalletProps) => {
   const { prices } = useCryptoPrices();
+  const { user } = useAuth();
+  const { userId: propUserId } = props || {};
+  
+  // Use authenticated user ID first, then prop userId, then null
+  const authUserId = user?.uid || propUserId;
   const [wallet, setWallet] = useState<WalletState>({
     isConnected: false,
     address: null,
@@ -41,19 +60,40 @@ export const useMockWallet = () => {
   const [volatilityData, setVolatilityData] = useState<VolatilityData | null>(null);
   const [firebaseWallet, setFirebaseWallet] = useState<SimulationWallet | null>(null);
 
-  // Generate or get stored user ID for Firebase queries
+  // Get user ID - prioritize authenticated user, fallback to localStorage for legacy support
   const getUserId = useCallback((): string => {
+    // Use authenticated user ID if available
+    if (authUserId) {
+      console.log('🆔 Using authenticated user ID:', authUserId);
+      return authUserId;
+    }
+    
+    // Legacy fallback for users not yet authenticated
     let userId = localStorage.getItem('simulationUserId');
     if (!userId) {
       userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       localStorage.setItem('simulationUserId', userId);
-      console.log('🆔 Generated new user ID:', userId);
+      console.log('🆔 Generated new legacy user ID:', userId);
     }
+    console.log('🆔 Using legacy user ID:', userId);
     return userId;
-  }, []);
+  }, [authUserId]);
 
-  // Try to restore simulation wallet from Firebase on init
+  // Try to restore simulation wallet from Firebase when user is available
   useEffect(() => {
+    // Only restore wallet if we have authenticated user ID or it's a legacy session
+    if (!authUserId && !localStorage.getItem('simulationUserId')) {
+      console.log('⏳ No authenticated user or legacy session, skipping wallet restore');
+      setWallet(prev => ({ ...prev, isLoading: false }));
+      return;
+    }
+
+    // Don't restore if user is not fully authenticated yet
+    if (!user && !localStorage.getItem('simulationUserId')) {
+      console.log('⏳ User not authenticated yet, waiting...');
+      return;
+    }
+
     const restoreWalletFromFirebase = async () => {
       console.log('🔄 useMockWallet hook initializing - attempting Firebase restore...');
       
@@ -61,6 +101,41 @@ export const useMockWallet = () => {
         setWallet(prev => ({ ...prev, isLoading: true }));
         
         const userId = getUserId();
+        
+        // For authenticated users, use user-scoped wallet service
+        if (authUserId && user) {
+          console.log('🔄 Using user-scoped wallet service for authenticated user:', authUserId);
+          const userWalletData = await UserScopedWalletService.getUserWallet(authUserId);
+          
+          if (userWalletData) {
+            console.log('📦 Found user-scoped wallet data:', {
+              address: userWalletData.address,
+              ethBalance: userWalletData.ethBalance,
+              strikePrice: userWalletData.strikePrice,
+              initialUsdValue: userWalletData.initialUsdValue,
+              isActive: userWalletData.isActive
+            });
+            
+            setWallet({
+              isConnected: true,
+              address: userWalletData.address,
+              ethBalance: userWalletData.ethBalance,
+              mode: 'simulation',
+              username: userWalletData.username,
+              strikePrice: userWalletData.strikePrice,
+              createdAt: userWalletData.createdAt.toMillis(),
+              initialUsdValue: userWalletData.initialUsdValue,
+              userId: userWalletData.userId,
+              isLoading: false,
+              error: null
+            });
+            
+            console.log('✅ User-scoped wallet auto-restored from Firebase');
+            return; // Exit early - wallet found
+          }
+        }
+        
+        // Fallback to legacy wallet service for non-authenticated users
         const firebaseWalletData = await simulationWalletService.getWalletByUserId(userId);
         
         if (firebaseWalletData) {
@@ -116,7 +191,24 @@ export const useMockWallet = () => {
     };
 
     restoreWalletFromFirebase();
-  }, [getUserId]);
+  }, [getUserId, authUserId, user]);
+
+  // Clear wallet when user logs out (authUserId becomes null)
+  useEffect(() => {
+    if (authUserId === null) {
+      console.log('🔌 User logged out, clearing wallet state');
+      setWallet({
+        isConnected: false,
+        address: null,
+        ethBalance: 0,
+        mode: null,
+        isLoading: false,
+        error: null
+      });
+      setFirebaseWallet(null);
+      setVolatilityData(null);
+    }
+  }, [authUserId]);
 
   // Migration helper function
   const migrateToFirebase = useCallback(async (localWalletData: any, userId: string) => {
@@ -166,10 +258,8 @@ export const useMockWallet = () => {
     const mockWalletData = walletData as MockWalletData;
     
     try {
-      // Save to Firebase first
       const userId = getUserId();
       const walletCreateData = {
-        userId,
         address: mockWalletData.address,
         ethBalance: mockWalletData.ethBalance,
         strikePrice: mockWalletData.strikePrice || prices?.ethToUsd || 3200,
@@ -178,8 +268,44 @@ export const useMockWallet = () => {
         isActive: true
       };
       
-      console.log('🎮 Creating wallet in Firebase with data:', walletCreateData);
-      const firebaseWalletId = await simulationWalletService.createWallet(walletCreateData);
+      // For authenticated users, use user-scoped wallet service
+      if (authUserId && user) {
+        console.log('🎮 Creating user-scoped wallet for authenticated user:', authUserId);
+        await UserScopedWalletService.createOrUpdateWallet(authUserId, walletCreateData);
+        
+        // Get the created wallet data
+        const userWalletData = await UserScopedWalletService.getUserWallet(authUserId);
+        if (userWalletData) {
+          setWallet({
+            isConnected: true,
+            address: userWalletData.address,
+            ethBalance: userWalletData.ethBalance,
+            mode: 'simulation',
+            username: userWalletData.username,
+            strikePrice: userWalletData.strikePrice,
+            createdAt: userWalletData.createdAt.toMillis(),
+            initialUsdValue: userWalletData.initialUsdValue,
+            userId: userWalletData.userId,
+            isLoading: false,
+            error: null
+          });
+          
+          console.log('🎮 User-scoped wallet connected and saved:', {
+            address: userWalletData.address,
+            ethBalance: userWalletData.ethBalance,
+            username: userWalletData.username,
+            userId: authUserId
+          });
+          
+          // Clean up old localStorage data
+          localStorage.removeItem('mockWallet');
+          return;
+        }
+      }
+      
+      // Fallback to legacy service for non-authenticated users
+      console.log('🎮 Creating legacy wallet in Firebase with data:', { ...walletCreateData, userId });
+      const firebaseWalletId = await simulationWalletService.createWallet({ ...walletCreateData, userId });
       
       // Get the created wallet data from Firebase
       const firebaseWalletData = await simulationWalletService.getWallet(firebaseWalletId);
@@ -229,33 +355,70 @@ export const useMockWallet = () => {
   }, [getUserId, prices]);
 
   const disconnectWallet = useCallback(async () => {
-    // Deactivate Firebase wallet for simulation mode
-    if (wallet.mode === 'simulation' && wallet.walletId) {
-      try {
-        await simulationWalletService.deactivateWallet(wallet.walletId);
-        console.log('🔌 Firebase wallet deactivated');
-      } catch (error) {
-        console.error('❌ Failed to deactivate Firebase wallet:', error);
+    console.log('🔌 Starting wallet disconnection process...');
+    
+    try {
+      // Get user ID before clearing wallet state
+      const userId = getUserId();
+      
+      // Clear all user data from Firebase (investments, transactions, wallet data)
+      if (authUserId || userId) {
+        console.log('🧨 Clearing all user data from Firebase...');
+        await UserDataCleanupService.clearAllUserData(authUserId || userId);
+        
+        // Verify cleanup was successful
+        const verification = await UserDataCleanupService.verifyCleanup(authUserId || userId);
+        if (verification.investmentsRemaining === 0 && verification.transactionsRemaining === 0) {
+          console.log('✅ User data cleanup verified successful');
+        } else {
+          console.warn('⚠️ Some data may remain after cleanup:', verification);
+        }
       }
+      
+      // Deactivate Firebase wallet for simulation mode
+      if (wallet.mode === 'simulation' && wallet.walletId) {
+        try {
+          await simulationWalletService.deactivateWallet(wallet.walletId);
+          console.log('🔌 Firebase wallet deactivated');
+        } catch (error) {
+          console.error('❌ Failed to deactivate Firebase wallet:', error);
+        }
+      }
+      
+      // Clear localStorage
+      localStorage.removeItem('mockWallet');
+      localStorage.removeItem('simulationUserId'); // Clear legacy user ID too
+      
+      // Reset wallet state
+      setWallet({
+        isConnected: false,
+        address: null,
+        ethBalance: 0,
+        mode: null,
+        isLoading: false,
+        error: null
+      });
+      
+      setFirebaseWallet(null);
+      setVolatilityData(null);
+      
+      console.log('✅ Wallet disconnected and all user data cleared');
+      
+    } catch (error) {
+      console.error('❌ Failed during wallet disconnection:', error);
+      // Still disconnect the wallet even if cleanup fails
+      setWallet({
+        isConnected: false,
+        address: null,
+        ethBalance: 0,
+        mode: null,
+        isLoading: false,
+        error: 'Disconnect completed with cleanup errors'
+      });
+      setFirebaseWallet(null);
+      setVolatilityData(null);
     }
-    
-    // Clear localStorage
-    localStorage.removeItem('mockWallet');
-    
-    setWallet({
-      isConnected: false,
-      address: null,
-      ethBalance: 0,
-      mode: null,
-      isLoading: false,
-      error: null
-    });
-    
-    setFirebaseWallet(null);
-    setVolatilityData(null);
-    
-    console.log('🔌 Wallet disconnected');
-  }, [wallet.mode, wallet.walletId]);
+  }, [wallet.mode, wallet.walletId, authUserId, getUserId]);
 
   // Calculate volatility data when prices or firebase wallet changes
   useEffect(() => {
@@ -411,7 +574,10 @@ export const useMockWallet = () => {
     return `${address.slice(0, 6)}...${address.slice(-4)}`;
   }, []);
 
-  const formatBalance = useCallback((balance: number, decimals: number = 4): string => {
+  const formatBalance = useCallback((balance?: number, decimals: number = 4): string => {
+    if (balance === undefined || balance === null || isNaN(balance)) {
+      return '0.0000';
+    }
     return balance.toFixed(decimals);
   }, []);
 
@@ -477,6 +643,82 @@ export const useMockWallet = () => {
     };
   }, [wallet.mode, wallet.ethBalance, wallet.initialUsdValue, wallet.strikePrice, wallet.createdAt, volatilityData, getCurrentUsdValue, getProfitLoss]);
 
+  // Refresh wallet data from Firebase (useful after purchases)
+  const refreshWallet = useCallback(async () => {
+    if (!authUserId && !localStorage.getItem('simulationUserId')) {
+      console.log('⚠️ Cannot refresh wallet: no user ID');
+      return;
+    }
+
+    try {
+      setWallet(prev => ({ ...prev, isLoading: true }));
+      
+      const userId = getUserId();
+      
+      if (authUserId && user) {
+        console.log('🔄 Refreshing wallet from Firebase:', authUserId);
+        const firebaseWalletData = await UserScopedWalletService.getUserWallet(authUserId);
+        
+        if (firebaseWalletData) {
+          setFirebaseWallet({
+            id: 'simulation',
+            userId: firebaseWalletData.userId,
+            address: firebaseWalletData.address,
+            ethBalance: firebaseWalletData.ethBalance,
+            strikePrice: firebaseWalletData.strikePrice,
+            initialUsdValue: firebaseWalletData.initialUsdValue,
+            createdAt: firebaseWalletData.createdAt,
+            username: firebaseWalletData.username,
+            isActive: firebaseWalletData.isActive,
+            lastUpdated: firebaseWalletData.lastUpdated
+          });
+          
+          setWallet(prev => ({
+            ...prev,
+            isConnected: true,
+            address: firebaseWalletData.address,
+            ethBalance: firebaseWalletData.ethBalance,
+            mode: 'simulation',
+            username: firebaseWalletData.username,
+            strikePrice: firebaseWalletData.strikePrice,
+            createdAt: firebaseWalletData.createdAt.toMillis(),
+            initialUsdValue: firebaseWalletData.initialUsdValue,
+            walletId: firebaseWalletData.id,
+            userId: firebaseWalletData.userId,
+            isLoading: false,
+            error: null
+          }));
+          
+          console.log('✅ Wallet refreshed successfully:', {
+            newBalance: firebaseWalletData.ethBalance.toFixed(4),
+            address: firebaseWalletData.address
+          });
+          
+          // Notify all other wallet instances to refresh
+          console.log('📡 Broadcasting wallet refresh to all instances');
+          emitWalletRefresh();
+        }
+      }
+    } catch (error) {
+      console.error('❌ Failed to refresh wallet:', error);
+      setWallet(prev => ({ ...prev, isLoading: false, error: 'Refresh failed' }));
+    }
+  }, [authUserId, user, getUserId]);
+
+  // Listen for global wallet refresh events from other components
+  useEffect(() => {
+    const handleGlobalRefresh = () => {
+      console.log('📡 Received global wallet refresh signal');
+      refreshWallet();
+    };
+    
+    walletRefreshListeners.add(handleGlobalRefresh);
+    
+    return () => {
+      walletRefreshListeners.delete(handleGlobalRefresh);
+    };
+  }, [refreshWallet]);
+
   return {
     // State
     isConnected: wallet.isConnected,
@@ -503,6 +745,7 @@ export const useMockWallet = () => {
     addBalance,
     restoreWallet,
     createFreshSimulationWallet,
+    refreshWallet,
     
     // Utilities
     formatAddress,

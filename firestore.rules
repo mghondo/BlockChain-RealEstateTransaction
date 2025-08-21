@@ -47,6 +47,37 @@ service cloud.firestore {
     match /users/{userId}/wallet/{walletId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // User-scoped investments
+    match /users/{userId}/investments/{investmentId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Global collections that need access
+    match /gameTime/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    match /sessions/{sessionId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /properties/{propertyId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null; // For updating available shares during purchases
+    }
+    
+    match /investments/{investmentId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    match /transactions/{transactionId} {
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
     
     // Deny access to all other documents
     match /{document=**} {

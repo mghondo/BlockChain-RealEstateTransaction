@@ -48,6 +48,10 @@ interface AuthContextType {
   linkWallet: (walletAddress: string) => Promise<void>;
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
   
+  // Session management
+  extendSession: () => void;
+  sessionTimeRemaining: number | null;
+  
   // Utility methods
   isAuthenticated: boolean;
   isPremium: boolean;
@@ -73,6 +77,72 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionExpiry, setSessionExpiry] = useState<number | null>(null);
+  const [sessionTimeRemaining, setSessionTimeRemaining] = useState<number | null>(null);
+
+  // Session timeout configuration (24 hours = 24 * 60 * 60 * 1000 ms)
+  const SESSION_DURATION = 24 * 60 * 60 * 1000;
+
+  // Session management functions
+  const startSession = () => {
+    const expiry = Date.now() + SESSION_DURATION;
+    setSessionExpiry(expiry);
+    localStorage.setItem('sessionExpiry', expiry.toString());
+  };
+
+  const extendSession = () => {
+    if (user) {
+      startSession();
+    }
+  };
+
+  const clearSession = () => {
+    setSessionExpiry(null);
+    setSessionTimeRemaining(null);
+    localStorage.removeItem('sessionExpiry');
+  };
+
+  const checkSessionExpiry = () => {
+    const storedExpiry = localStorage.getItem('sessionExpiry');
+    if (storedExpiry) {
+      const expiry = parseInt(storedExpiry);
+      const now = Date.now();
+      
+      if (now >= expiry) {
+        // Session expired - logout user
+        logout();
+        return false;
+      } else {
+        // Session still valid - set expiry and remaining time
+        setSessionExpiry(expiry);
+        setSessionTimeRemaining(expiry - now);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Check session expiry periodically
+  useEffect(() => {
+    if (!user) return;
+
+    const interval = setInterval(() => {
+      const storedExpiry = localStorage.getItem('sessionExpiry');
+      if (storedExpiry) {
+        const expiry = parseInt(storedExpiry);
+        const now = Date.now();
+        const remaining = expiry - now;
+        
+        if (remaining <= 0) {
+          logout();
+        } else {
+          setSessionTimeRemaining(remaining);
+        }
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Listen for authentication state changes
   useEffect(() => {
@@ -80,12 +150,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(firebaseUser);
       
       if (firebaseUser) {
-        // User is signed in - load their profile and initialize game state
-        await loadUserProfile(firebaseUser.uid);
-        await initializeUserGameState(firebaseUser.uid);
+        // Check if session is still valid
+        const sessionValid = checkSessionExpiry();
+        
+        if (sessionValid || !localStorage.getItem('sessionExpiry')) {
+          // Start or continue session
+          if (!sessionValid) startSession();
+          
+          // User is signed in - load their profile and initialize game state
+          await loadUserProfile(firebaseUser.uid);
+          await initializeUserGameState(firebaseUser.uid);
+        } else {
+          // Session expired - logout immediately
+          await signOut(auth);
+          return;
+        }
       } else {
         // User is signed out - cleanup any running services
         setUserProfile(null);
+        clearSession();
         await cleanupUserServices();
       }
       
@@ -150,6 +233,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
       
       setUserProfile(newUserProfile);
+      startSession(); // Start session on successful registration
       console.log('✅ User registered and profile created:', firebaseUser.email);
       
     } catch (error: any) {
@@ -173,6 +257,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         lastLoginAt: serverTimestamp()
       }, { merge: true });
       
+      startSession(); // Start session on successful login
       console.log('✅ User logged in:', firebaseUser.email);
       
     } catch (error: any) {
@@ -228,6 +313,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('✅ Existing Google user logged in:', firebaseUser.email);
       }
       
+      startSession(); // Start session on successful Google login
+      
     } catch (error: any) {
       console.error('❌ Google login failed:', error);
       throw new Error(error.message || 'Google login failed');
@@ -242,7 +329,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       await signOut(auth);
       setUser(null);
       setUserProfile(null);
-      console.log('✅ User logged out');
+      clearSession();
+      
+      // Clear wallet-related localStorage data to ensure clean logout
+      localStorage.removeItem('simulationUserId');
+      localStorage.removeItem('mockWallet');
+      
+      // Redirect to auth page after logout
+      window.location.href = '/auth';
+      
+      console.log('✅ User logged out and wallet data cleared');
     } catch (error: any) {
       console.error('❌ Logout failed:', error);
       throw new Error(error.message || 'Logout failed');
@@ -332,6 +428,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     linkWallet,
     updateUserProfile,
+    extendSession,
+    sessionTimeRemaining,
     isAuthenticated,
     isPremium,
   };
