@@ -26,6 +26,9 @@ import { DashboardCharts } from './DashboardCharts';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
 import { useAuth } from '../../contexts/AuthContext';
 import { useUserInvestments } from '../../hooks/useUserInvestments';
+import { useRentalPayments } from '../../hooks/useRentalPayments';
+import { useHourlyRental } from '../../hooks/useHourlyRental';
+import { fixMissingTimestamps } from '../../utils/fixMissingTimestamps';
 import { AccountBalanceWallet, ContentCopy, LocationOn, TrendingUp as TrendingUpIcon } from '@mui/icons-material';
 
 export default function Dashboard() {
@@ -33,11 +36,36 @@ export default function Dashboard() {
   const { isConnected, address, ethBalance, restoreWallet, formatAddress, formatBalance } = useMockWallet({ userId: user?.uid });
   const { prices } = useCryptoPrices();
   const { investments, portfolioSummary, loading: investmentsLoading, error: investmentsError } = useUserInvestments();
+  const { paymentData, collectRental, canCollect } = useRentalPayments(investments);
+  const { triggerManualCollection, getNextCollectionTime, isCollectionTime, isActive } = useHourlyRental({ 
+    investments, 
+    enabled: true 
+  });
 
   // Restore wallet on component mount
   useEffect(() => {
     restoreWallet();
   }, [restoreWallet]);
+
+  // Fix missing timestamps on component mount
+  useEffect(() => {
+    const fixTimestamps = async () => {
+      if (user?.uid) {
+        try {
+          const fixed = await fixMissingTimestamps(user.uid);
+          if (fixed > 0) {
+            console.log(`🔧 Fixed ${fixed} investment timestamps - refreshing page...`);
+            // Refresh the page after fixing timestamps
+            setTimeout(() => window.location.reload(), 1000);
+          }
+        } catch (error) {
+          console.error('Failed to fix timestamps:', error);
+        }
+      }
+    };
+
+    fixTimestamps();
+  }, [user?.uid]);
 
   const handleCopyAddress = () => {
     if (address) {
@@ -183,6 +211,98 @@ export default function Dashboard() {
                 ✅ Ready to invest!
               </Typography>
             </Grid>
+
+            {/* Rental Income Collection */}
+            <Grid item xs={12} md={4}>
+              <Typography variant="body2" color="text.secondary" gutterBottom>
+                Rental Income Status
+              </Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  💰 Total Accrued: ${paymentData.totalAccrued.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </Typography>
+                <Typography variant="body2" color="success.main">
+                  ✅ Already Collected: ${paymentData.alreadyPaid.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </Typography>
+                <Typography variant="h6" color="primary.main" sx={{ mt: 1 }}>
+                  🎯 Pending: ${paymentData.pendingAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </Typography>
+              </Box>
+              
+              {/* Automatic Collection Status */}
+              <Box sx={{ mb: 2, p: 1, bgcolor: 'rgba(0,128,0,0.1)', borderRadius: 1 }}>
+                <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, display: 'block' }}>
+                  🤖 AUTOMATIC COLLECTION
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  System Active: {isActive ? 'YES' : 'NO'}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Current Time Collection: {isCollectionTime() ? 'YES (:00 or :30)' : 'NO'}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Next Collection: {getNextCollectionTime()?.toLocaleTimeString() || 'N/A'}
+                </Typography>
+              </Box>
+
+              {/* Debug: Rental Payment Data */}
+              <Box sx={{ mb: 2, p: 1, bgcolor: 'rgba(255,0,0,0.1)', borderRadius: 1 }}>
+                <Typography variant="caption" color="error.main" sx={{ fontWeight: 600, display: 'block' }}>
+                  🔍 RENTAL DEBUG
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Raw totalAccrued: {paymentData.totalAccrued}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Raw alreadyPaid: {paymentData.alreadyPaid}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Raw pendingAmount: {paymentData.pendingAmount}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Is Collecting: {paymentData.isCollecting ? 'YES' : 'NO'}
+                </Typography>
+                <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                  Can Collect: {canCollect ? 'YES' : 'NO'}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {canCollect ? (
+                  <Button 
+                    variant="contained" 
+                    color="success"
+                    disabled={paymentData.isCollecting}
+                    onClick={async () => {
+                      const result = await collectRental();
+                      if (result.success) {
+                        console.log(`💰 Successfully collected $${result.amountPaid.toFixed(2)}`);
+                      }
+                    }}
+                    sx={{ fontWeight: 'bold' }}
+                  >
+                    {paymentData.isCollecting ? '⏳ Collecting...' : '💰 Manual Collect'}
+                  </Button>
+                ) : (
+                  <Typography variant="body2" color="text.secondary">
+                    {paymentData.pendingAmount < 0.01 ? '✨ No pending income' : 'Processing...'}
+                  </Typography>
+                )}
+                
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  size="small"
+                  onClick={async () => {
+                    const success = await triggerManualCollection();
+                    console.log('🧪 Manual hourly collection result:', success);
+                  }}
+                  sx={{ fontWeight: 'bold' }}
+                >
+                  🧪 Test Hourly
+                </Button>
+              </Box>
+            </Grid>
           </Grid>
         </CardContent>
       </Card>
@@ -318,6 +438,25 @@ export default function Dashboard() {
                       <Typography variant="caption" color="primary.main" sx={{ fontWeight: 600 }}>
                         Purchased {new Date(property.purchaseDate).toLocaleDateString()}
                       </Typography>
+                      
+                      {/* Debug: Show all timestamp information and rental data */}
+                      <Box sx={{ mt: 1, p: 1, bgcolor: 'rgba(0,255,0,0.1)', borderRadius: 1 }}>
+                        <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, display: 'block' }}>
+                          🔍 PROPERTY DEBUG
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                          Purchase: {property.purchaseDate ? new Date(property.purchaseDate).toISOString() : 'NOT SET'}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                          Current Time: {new Date().toISOString()}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                          Rental Earned: ${property.totalRentalEarned.toFixed(2)}
+                        </Typography>
+                        <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
+                          Monthly Rate: ${property.monthlyIncome.toFixed(2)}
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
 
@@ -352,16 +491,26 @@ export default function Dashboard() {
                     
                     <Box>
                       <Typography variant="caption" color="text.secondary">
-                        Monthly Income
+                        💰 Rental Income (PAID)
                       </Typography>
-                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'warning.main' }}>
-                        ${property.monthlyIncome.toFixed(0)}/mo
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+                        ${property.totalRentalEarned.toFixed(0)} earned
                       </Typography>
-                      {property.totalRentalEarned > 0 && (
-                        <Typography variant="caption" color="success.main" sx={{ display: 'block' }}>
-                          +${property.totalRentalEarned.toFixed(0)} earned
-                        </Typography>
-                      )}
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        ${property.monthlyIncome.toFixed(0)}/mo rate
+                      </Typography>
+                    </Box>
+                    
+                    <Box>
+                      <Typography variant="caption" color="text.secondary">
+                        📈 Appreciation (UNREALIZED)
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: 'info.main' }}>
+                        ${property.appreciationAmount ? property.appreciationAmount.toFixed(0) : '0'}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                        Paper gains only
+                      </Typography>
                     </Box>
                     
                     <Box>
@@ -455,9 +604,9 @@ export default function Dashboard() {
       </Box>
 
       {/* Portfolio Overview - Real Data */}
-      <Box sx={{ mb: 4 }}>
+      {/* <Box sx={{ mb: 4 }}>
         <PortfolioOverview className="rounded-lg" />
-      </Box>
+      </Box> */}
 
       {/* Mock Portfolio Overview - Keep for reference but remove */}
       <Grid container spacing={3} sx={{ mb: 4, display: 'none' }}>

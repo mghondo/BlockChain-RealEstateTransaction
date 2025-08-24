@@ -503,17 +503,18 @@ export const useMockWallet = (props?: UseMockWalletProps) => {
   }, [wallet.mode]);
 
   const addBalance = useCallback((ethAmount: number) => {
-    // In simulation mode, don't add external balance to maintain consistent $20k
-    if (wallet.mode === 'simulation') {
-      console.log('💰 Simulation mode: Not adding external balance to maintain $20k starting amount');
-      return;
-    }
+    console.log('💰 Adding balance to wallet:', {
+      currentBalance: wallet.ethBalance,
+      addingAmount: ethAmount,
+      newBalance: wallet.ethBalance + ethAmount,
+      mode: wallet.mode
+    });
     
     setWallet(prev => ({
       ...prev,
       ethBalance: prev.ethBalance + ethAmount
     }));
-  }, [wallet.mode]);
+  }, [wallet.ethBalance, wallet.mode]);
 
   // Restore wallet (only for simulation mode)
   const restoreWallet = useCallback(() => {

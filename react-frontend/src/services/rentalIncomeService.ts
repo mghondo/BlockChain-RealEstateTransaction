@@ -2,6 +2,9 @@
 // 0.5 hour real time = 1 month game time (1440x acceleration)
 // Properties appreciate 8% annually (2% quarterly)
 
+import { doc, getDoc, updateDoc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { db } from '../firebase/config';
+
 interface RentalPayment {
   id?: string;
   userId: string;
@@ -213,27 +216,53 @@ export class RentalIncomeService {
     }
   }
 
-  // Update user's USDC balance
-  static async updateUserBalance(userId: string, amount: number): Promise<void> {
+  // Update user's ETH wallet balance with rental income
+  static async updateUserBalance(userId: string, usdAmount: number): Promise<void> {
     try {
-      const userDoc = doc(db, 'users', userId);
-      const userSnapshot = await getDoc(userDoc);
+      // Get current ETH price to convert USD rental income to ETH
+      const ethPrice = await this.getCurrentEthPrice();
+      const ethAmount = usdAmount / ethPrice;
       
-      if (userSnapshot.exists()) {
-        const userData = userSnapshot.data();
-        const currentBalance = userData.usdcBalance || 0;
-        const newBalance = currentBalance + amount;
+      // Update user's wallet in the wallets collection
+      const walletDoc = doc(db, `users/${userId}/wallet`, 'simulation');
+      const walletSnapshot = await getDoc(walletDoc);
+      
+      if (walletSnapshot.exists()) {
+        const walletData = walletSnapshot.data();
+        const currentBalance = walletData.ethBalance || 0;
+        const newBalance = currentBalance + ethAmount;
         
-        await updateDoc(userDoc, {
-          usdcBalance: newBalance,
+        await updateDoc(walletDoc, {
+          ethBalance: newBalance,
           lastRentalPayment: new Date(),
+          lastUpdated: new Date(),
         });
 
-        console.log(`Updated user ${userId} USDC balance: ${currentBalance} → ${newBalance}`);
+        console.log(`Updated user ${userId} ETH balance: ${currentBalance.toFixed(4)} → ${newBalance.toFixed(4)} ETH (+$${usdAmount.toFixed(2)} rental)`);
+        
+        // Trigger wallet refresh across all components
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('walletRefresh'));
+        }
+      } else {
+        console.warn(`No wallet found for user ${userId}`);
       }
     } catch (error) {
       console.error('Error updating user balance:', error);
       throw error;
+    }
+  }
+
+  // Get current ETH price (you might want to use your existing crypto price service)
+  private static async getCurrentEthPrice(): Promise<number> {
+    try {
+      // For now, use a simple fetch. You might want to integrate with your existing useCryptoPrices hook
+      const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd');
+      const data = await response.json();
+      return data.ethereum.usd;
+    } catch (error) {
+      console.warn('Failed to fetch ETH price, using fallback:', error);
+      return 3500; // Fallback price
     }
   }
 

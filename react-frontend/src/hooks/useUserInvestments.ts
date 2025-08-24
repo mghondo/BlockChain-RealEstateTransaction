@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from '../contexts/AuthContext';
+import { RentalIncomeService } from '../services/rentalIncomeService';
+import { SimpleRentalProcessor } from '../services/simpleRentalProcessor';
 
 interface Investment {
   id: string;
@@ -63,62 +65,56 @@ export const useUserInvestments = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calculate rental income earned since purchase
-  const calculateRentalEarned = useCallback((investment: Investment): number => {
-    const now = new Date();
-    const startDate = new Date(investment.rentalIncomeStartDate);
-    const timeElapsedMs = now.getTime() - startDate.getTime();
-    const monthsElapsed = timeElapsedMs / (1000 * 60 * 60 * 24 * 30.44); // Average month length
-    const hoursElapsed = timeElapsedMs / (1000 * 60 * 60);
-    const daysElapsed = timeElapsedMs / (1000 * 60 * 60 * 24);
+  // Calculate rental income earned (no processing, just calculation)
+  const calculateRentalEarned = useCallback(async (investment: Investment): Promise<number> => {
+    if (!user?.uid) return 0;
     
-    console.log(`⏰ Rental calculation for ${investment.propertyAddress}:`, {
-      now: now.toISOString(),
-      startDate: startDate.toISOString(),
-      timeElapsedMs,
-      hoursElapsed: hoursElapsed.toFixed(2),
-      daysElapsed: daysElapsed.toFixed(2),
-      monthsElapsed: monthsElapsed.toFixed(4),
-      propertyTotalPrice: investment.propertyTotalPrice,
-      rentalYield: investment.rentalYield,
-      sharesOwned: investment.sharesOwned
-    });
-    
-    if (monthsElapsed <= 0) {
-      console.log('⚠️ No time elapsed yet, returning 0 rental');
+    try {
+      const now = new Date();
+      const purchaseDate = new Date(investment.purchaseDate);
+      const realTimeElapsedMs = now.getTime() - purchaseDate.getTime();
+      
+      // Apply game time acceleration: 1 real hour = 2 game months
+      const TIME_MULTIPLIER = 1440;
+      const gameTimeElapsedMs = realTimeElapsedMs * TIME_MULTIPLIER;
+      const gameMonthsElapsed = gameTimeElapsedMs / (1000 * 60 * 60 * 24 * 30.44);
+      
+      if (gameMonthsElapsed <= 0) return 0;
+      
+      // Calculate rental income
+      const annualPropertyRental = investment.propertyTotalPrice * investment.rentalYield;
+      const userAnnualRental = (annualPropertyRental * investment.sharesOwned) / 100;
+      const userMonthlyRental = userAnnualRental / 12;
+      const totalRentalEarned = userMonthlyRental * gameMonthsElapsed;
+      
+      console.log(`💰 Calculated rental for ${investment.propertyAddress}: $${totalRentalEarned.toFixed(2)} (${gameMonthsElapsed.toFixed(2)} months)`);
+      
+      return totalRentalEarned;
+    } catch (error) {
+      console.error('Error calculating rental earned:', error);
       return 0;
     }
-    
-    // Calculate annual rental income for user's shares
-    const annualPropertyRental = investment.propertyTotalPrice * investment.rentalYield;
-    const userAnnualRental = (annualPropertyRental * investment.sharesOwned) / 100;
-    const userMonthlyRental = userAnnualRental / 12;
-    const totalRentalEarned = userMonthlyRental * monthsElapsed;
-    
-    console.log(`💰 Rental calculation details:`, {
-      annualPropertyRental,
-      userAnnualRental,
-      userMonthlyRental,
-      totalRentalEarned
-    });
-    
-    return totalRentalEarned;
-  }, []);
+  }, [user?.uid]);
 
   // Calculate property appreciation since purchase
   const calculateAppreciation = useCallback((investment: Investment): number => {
     const now = new Date();
-    const startDate = new Date(investment.appreciationStartDate);
-    const monthsElapsed = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+    const purchaseDate = new Date(investment.purchaseDate);
+    const realTimeElapsedMs = now.getTime() - purchaseDate.getTime();
     
-    if (monthsElapsed <= 0) return 0;
+    // Apply game time acceleration: 1 real hour = 2 game months
+    const TIME_MULTIPLIER = 1440; // Same as useGameTime
+    const gameTimeElapsedMs = realTimeElapsedMs * TIME_MULTIPLIER;
+    const gameMonthsElapsed = gameTimeElapsedMs / (1000 * 60 * 60 * 24 * 30.44);
+    
+    if (gameMonthsElapsed <= 0) return 0;
     
     // Simple appreciation model: ~3-5% annual depending on property class
     const annualAppreciationRate = investment.propertyClass === 'A' ? 0.05 : 
                                   investment.propertyClass === 'B' ? 0.04 : 0.03;
     
     const monthlyAppreciationRate = annualAppreciationRate / 12;
-    const appreciationMultiplier = Math.pow(1 + monthlyAppreciationRate, monthsElapsed);
+    const appreciationMultiplier = Math.pow(1 + monthlyAppreciationRate, gameMonthsElapsed);
     
     const currentPropertyValue = investment.propertyTotalPrice * appreciationMultiplier;
     const userCurrentValue = (currentPropertyValue * investment.sharesOwned) / 100;
@@ -128,7 +124,10 @@ export const useUserInvestments = () => {
 
   // Fetch user investments from Firebase
   const fetchInvestments = useCallback(async () => {
+    console.log('🔍 fetchInvestments called, user state:', { uid: user?.uid, user: user });
+    
     if (!user?.uid) {
+      console.log('❌ No user UID available, clearing investments');
       setInvestments([]);
       setPortfolioSummary(null);
       return;
@@ -139,10 +138,21 @@ export const useUserInvestments = () => {
 
     try {
       console.log('🔍 Fetching user investments for:', user.uid);
+      console.log('🔍 User auth state:', { 
+        uid: user.uid, 
+        email: user.email,
+        isAnonymous: user.isAnonymous 
+      });
       
+      // Test Firestore connection
+      console.log('🔗 Testing Firestore connection...');
       const investmentsRef = collection(db, `users/${user.uid}/investments`);
+      console.log('📂 Collection reference created:', investmentsRef.path);
+      
       const q = query(investmentsRef, orderBy('purchaseDate', 'desc'));
+      console.log('🔍 Query created, attempting to fetch documents...');
       const snapshot = await getDocs(q);
+      console.log('📄 Documents fetched, count:', snapshot.size);
 
       const rawInvestments: Investment[] = snapshot.docs.map(doc => {
         const data = doc.data();
@@ -193,20 +203,25 @@ export const useUserInvestments = () => {
       });
 
       // Calculate enhanced data for each investment
-      const enhancedInvestments: InvestmentWithCalculations[] = rawInvestments.map(investment => {
+      const enhancedInvestments: InvestmentWithCalculations[] = await Promise.all(rawInvestments.map(async investment => {
         const ownershipPercentage = investment.sharesOwned;
-        const totalRentalEarned = calculateRentalEarned(investment);
+        const totalRentalEarned = await calculateRentalEarned(investment);
         const appreciationAmount = calculateAppreciation(investment);
         
         // Calculate current property value with appreciation
         const now = new Date();
-        const startDate = new Date(investment.appreciationStartDate);
-        const monthsElapsed = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+        const purchaseDate = new Date(investment.purchaseDate);
+        const realTimeElapsedMs = now.getTime() - purchaseDate.getTime();
+        
+        // Apply game time acceleration: 1 real hour = 2 game months
+        const TIME_MULTIPLIER = 1440; // Same as useGameTime
+        const gameTimeElapsedMs = realTimeElapsedMs * TIME_MULTIPLIER;
+        const gameMonthsElapsed = gameTimeElapsedMs / (1000 * 60 * 60 * 24 * 30.44);
         
         const annualAppreciationRate = investment.propertyClass === 'A' ? 0.05 : 
                                       investment.propertyClass === 'B' ? 0.04 : 0.03;
         const monthlyAppreciationRate = annualAppreciationRate / 12;
-        const appreciationMultiplier = Math.max(1, Math.pow(1 + monthlyAppreciationRate, monthsElapsed));
+        const appreciationMultiplier = Math.max(1, Math.pow(1 + monthlyAppreciationRate, gameMonthsElapsed));
         
         const currentPropertyValue = investment.propertyTotalPrice * appreciationMultiplier;
         const currentUserValue = (currentPropertyValue * investment.sharesOwned) / 100;
@@ -239,11 +254,11 @@ export const useUserInvestments = () => {
           appreciationAmount,
           totalReturn,
           totalReturnPercentage,
-          monthsElapsed
+          gameMonthsElapsed: gameMonthsElapsed.toFixed(2)
         });
         
         return enhanced;
-      });
+      }));
 
       setInvestments(enhancedInvestments);
 

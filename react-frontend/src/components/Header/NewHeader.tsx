@@ -192,11 +192,11 @@ export default function NewHeader() {
                   label={`$${volatilityData.currentUsdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${volatilityData.profitLoss >= 0 ? '+' : ''}$${Math.abs(volatilityData.profitLoss).toFixed(0)})`}
                   variant="outlined"
                   size="small"
-                  color={volatilityData.profitLoss >= 0 ? "success" : "error"}
+                  color="success"
                   sx={{
                     fontWeight: 'bold',
                     '&:hover': {
-                      backgroundColor: volatilityData.profitLoss >= 0 ? 'rgba(76, 175, 80, 0.1)' : 'rgba(244, 67, 54, 0.1)'
+                      backgroundColor: 'rgba(76, 175, 80, 0.1)'
                     }
                   }}
                 />
@@ -211,7 +211,7 @@ export default function NewHeader() {
                     label={`$${currentUsdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} (${isProfit ? '+' : ''}${profitLoss.toFixed(0)})`}
                     variant="outlined"
                     size="small"
-                    color={isProfit ? "success" : "error"}
+                    color="success"
                   />
                 );
               })()
