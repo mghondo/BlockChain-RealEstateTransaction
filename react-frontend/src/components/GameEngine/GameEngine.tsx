@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useGameTime } from '../../hooks/useGameTime';
 import { useUserSession } from '../../services/sessionService';
 import { useWallet } from '../../hooks/useWallet';
+import { useAuth } from '../../contexts/AuthContext';
+import { useUserInvestments } from '../../hooks/useUserInvestments';
+import { SimpleRentalProcessor } from '../../services/simpleRentalProcessor';
 import { OfflineProgressModal } from '../GameTime/OfflineProgressModal';
 
 interface GameEngineProps {
@@ -10,6 +13,8 @@ interface GameEngineProps {
 
 export const GameEngine: React.FC<GameEngineProps> = ({ children }) => {
   const { account } = useWallet();
+  const { user } = useAuth();
+  const { investments } = useUserInvestments();
   const { gameTime, isCalculatingOfflineProgress, offlineProgressCompleted } = useGameTime(account || '');
   const [showOfflineModal, setShowOfflineModal] = useState(false);
   const [offlineProgress, setOfflineProgress] = useState({
@@ -30,17 +35,50 @@ export const GameEngine: React.FC<GameEngineProps> = ({ children }) => {
   }, [isCalculatingOfflineProgress, showOfflineModal]);
 
   useEffect(() => {
-    if (offlineProgressCompleted && showOfflineModal) {
-      // TODO: Get actual offline progress data from the hook
-      // For now, we'll show the modal with placeholder data
-      setOfflineProgress({
-        gameMonthsElapsed: 3, // This should come from the hook
-        rentalIncome: 0, // Set to zero until rental income system is implemented
-        appreciation: 0, // Set to zero until appreciation system is implemented
-        newProperties: [], // This should come from property service
-      });
+    if (offlineProgressCompleted && showOfflineModal && user?.uid && investments.length > 0) {
+      // Calculate real offline progress data
+      const calculateRealProgress = async () => {
+        try {
+          console.log('🔄 Calculating real offline progress for welcome modal...');
+          
+          // Get pending rental income
+          const rentalData = await SimpleRentalProcessor.calculatePendingRental(user.uid, investments);
+          
+          // Calculate total appreciation from all investments
+          const totalAppreciation = investments.reduce((total, investment) => {
+            return total + (investment.appreciationAmount || 0);
+          }, 0);
+          
+          // Calculate game months elapsed (simplified - could be more sophisticated)
+          const gameMonthsElapsed = Math.max(1, Math.floor(rentalData.totalAccrued / 100)); // Rough estimate
+          
+          console.log('💰 Offline progress calculated:', {
+            availableCash: rentalData.pendingAmount,
+            paperGains: totalAppreciation,
+            gameMonthsElapsed
+          });
+          
+          setOfflineProgress({
+            gameMonthsElapsed,
+            rentalIncome: rentalData.pendingAmount, // Available cash that goes to wallet
+            appreciation: totalAppreciation, // Paper gains from property appreciation
+            newProperties: [], // TODO: Could add new properties available since last login
+          });
+        } catch (error) {
+          console.error('❌ Failed to calculate offline progress:', error);
+          // Fallback to basic data
+          setOfflineProgress({
+            gameMonthsElapsed: 1,
+            rentalIncome: 0,
+            appreciation: 0,
+            newProperties: [],
+          });
+        }
+      };
+      
+      calculateRealProgress();
     }
-  }, [offlineProgressCompleted, showOfflineModal]);
+  }, [offlineProgressCompleted, showOfflineModal, user?.uid, investments]);
   
   const handleCloseOfflineModal = () => {
     setShowOfflineModal(false);

@@ -16,13 +16,20 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Drawer,
+  List,
+  ListItem,
+  ListItemText,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   AccountBalanceWallet,
   KeyboardArrowDown,
   ContentCopy,
-  Close
+  Close,
+  Menu as MenuIcon
 } from '@mui/icons-material';
 import { useMockWallet } from '../../hooks/useMockWallet';
 import { useCryptoPrices } from '../../hooks/useCryptoPrices';
@@ -62,12 +69,16 @@ export default function NewHeader() {
   const [walletMenuAnchor, setWalletMenuAnchor] = useState<null | HTMLElement>(null);
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [showDisconnectWarning, setShowDisconnectWarning] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const navigationItems = [
     ...(isAuthenticated ? [
       { label: 'Properties', path: '/properties' },
       { label: 'Dashboard', path: '/dashboard' },
-      { label: 'Watchlist', path: '/watchlist' }
+      // { label: 'Watchlist', path: '/watchlist' }
     ] : [])
   ];
 
@@ -129,37 +140,45 @@ export default function NewHeader() {
           FracEstate
         </Typography>
 
-        <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}>
-          {navigationItems.map((item) => (
-            <Typography
-              key={item.path}
-              onClick={() => handleNavClick(item.path)}
-              sx={{
-                cursor: 'pointer',
-                px: 2,
-                py: 1,
-                borderRadius: 1,
-                fontWeight: location.pathname === item.path ? 600 : 400,
-                color: location.pathname === item.path ? 'primary.main' : 'inherit',
-                backgroundColor: 'transparent',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)'
-                }
-              }}
-            >
-              {item.label}
-            </Typography>
-          ))}
-        </Box>
+        {/* Desktop Navigation */}
+        {!isMobile && (
+          <>
+            <Box sx={{ display: 'flex', gap: 2, flexGrow: 1 }}>
+              {navigationItems.map((item) => (
+                <Typography
+                  key={item.path}
+                  onClick={() => handleNavClick(item.path)}
+                  sx={{
+                    cursor: 'pointer',
+                    px: 2,
+                    py: 1,
+                    borderRadius: 1,
+                    fontWeight: location.pathname === item.path ? 600 : 400,
+                    color: location.pathname === item.path ? 'primary.main' : 'inherit',
+                    backgroundColor: 'transparent',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255, 255, 255, 0.1)'
+                    }
+                  }}
+                >
+                  {item.label}
+                </Typography>
+              ))}
+            </Box>
 
-        {/* Game Clock */}
-        <GameClock />
+            {/* Game Clock - Desktop Only */}
+            <GameClock />
+          </>
+        )}
+
+        {/* Mobile Spacer */}
+        {isMobile && <Box sx={{ flexGrow: 1 }} />}
 
         {/* Crypto Price Display - Hidden from header, available for property purchase and dashboard */}
         {/* <PriceDisplay compact className="hidden md:flex mr-2" /> */}
 
-        {/* Balance Display */}
-        {isConnected && (
+        {/* Desktop Balance Display */}
+        {!isMobile && isConnected && (
           <Box sx={{ display: 'flex', alignItems: 'center', mr: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mr: 1 }}>
               <Box 
@@ -226,17 +245,30 @@ export default function NewHeader() {
           </Box>
         )}
 
-        {/* Combined Wallet & Account Menu */}
-        <Button
-          variant={isConnected ? "outlined" : "contained"}
-          color="primary"
-          onClick={(e) => setWalletMenuAnchor(e.currentTarget)}
-          disabled={isLoading}
-          startIcon={isLoading ? <CircularProgress size={16} /> : <AccountBalanceWallet />}
-          endIcon={<KeyboardArrowDown />}
-        >
-          {isLoading ? 'Connecting...' : isConnected ? 'Account' : 'Account'}
-        </Button>
+        {/* Desktop Account Button */}
+        {!isMobile && (
+          <Button
+            variant={isConnected ? "outlined" : "contained"}
+            color="primary"
+            onClick={(e) => setWalletMenuAnchor(e.currentTarget)}
+            disabled={isLoading}
+            startIcon={isLoading ? <CircularProgress size={16} /> : <AccountBalanceWallet />}
+            endIcon={<KeyboardArrowDown />}
+          >
+            {isLoading ? 'Connecting...' : isConnected ? 'Account' : 'Account'}
+          </Button>
+        )}
+
+        {/* Mobile Hamburger Menu */}
+        {isMobile && (
+          <IconButton
+            color="primary"
+            onClick={() => setMobileMenuOpen(true)}
+            sx={{ p: 1 }}
+          >
+            <MenuIcon />
+          </IconButton>
+        )}
       </Toolbar>
 
       {/* Combined Wallet & Account Menu */}
@@ -439,6 +471,164 @@ export default function NewHeader() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Mobile Navigation Drawer */}
+      <Drawer
+        anchor="right"
+        open={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        PaperProps={{
+          sx: {
+            width: 280,
+            backgroundColor: 'background.paper',
+          }
+        }}
+      >
+        <Box sx={{ p: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+              Menu
+            </Typography>
+            <IconButton onClick={() => setMobileMenuOpen(false)}>
+              <Close />
+            </IconButton>
+          </Box>
+
+          {/* Navigation Items */}
+          <List sx={{ mb: 2 }}>
+            {navigationItems.map((item) => (
+              <ListItem 
+                key={item.path}
+                sx={{ 
+                  p: 0, 
+                  mb: 1,
+                  backgroundColor: location.pathname === item.path ? 'rgba(0, 212, 255, 0.1)' : 'transparent',
+                  borderRadius: 1
+                }}
+              >
+                <ListItemText
+                  primary={item.label}
+                  onClick={() => {
+                    handleNavClick(item.path);
+                    setMobileMenuOpen(false);
+                  }}
+                  sx={{
+                    cursor: 'pointer',
+                    p: 2,
+                    '& .MuiTypography-root': {
+                      fontWeight: location.pathname === item.path ? 600 : 400,
+                      color: location.pathname === item.path ? 'primary.main' : 'inherit'
+                    }
+                  }}
+                />
+              </ListItem>
+            ))}
+          </List>
+
+          <Divider sx={{ my: 2 }} />
+
+          {/* Mobile Balance Display */}
+          {isConnected && (
+            <Box sx={{ mb: 3, p: 2, backgroundColor: 'rgba(0, 212, 255, 0.05)', borderRadius: 2 }}>
+              <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                💰 Wallet Balance
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <Box 
+                  sx={{ 
+                    width: 6, 
+                    height: 6, 
+                    backgroundColor: 'success.main',
+                    borderRadius: '50%',
+                  }}
+                />
+                <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 600 }}>
+                  {formatBalance(ethBalance)} ETH
+                </Typography>
+              </Box>
+              {mode === 'simulation' && volatilityData ? (
+                <Typography variant="caption" color="success.main">
+                  ${volatilityData.currentUsdValue.toLocaleString(undefined, { maximumFractionDigits: 0 })} 
+                  ({volatilityData.profitLoss >= 0 ? '+' : ''}${Math.abs(volatilityData.profitLoss).toFixed(0)})
+                </Typography>
+              ) : prices ? (
+                <Typography variant="caption" color="success.main">
+                  ≈ ${(ethBalance * prices.ethToUsd).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </Typography>
+              ) : null}
+            </Box>
+          )}
+
+          {/* Account Section */}
+          <Box sx={{ p: 2, backgroundColor: 'rgba(0, 0, 0, 0.02)', borderRadius: 2 }}>
+            {!isAuthenticated ? (
+              <>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  👤 Account
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="contained"
+                  onClick={() => {
+                    navigate('/auth');
+                    setMobileMenuOpen(false);
+                  }}
+                  sx={{ mb: 1 }}
+                >
+                  Sign In
+                </Button>
+              </>
+            ) : (
+              <>
+                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                  👤 Welcome, {user?.email}
+                </Typography>
+                <Button
+                  fullWidth
+                  variant="outlined"
+                  onClick={() => {
+                    signOut();
+                    setMobileMenuOpen(false);
+                  }}
+                  sx={{ mb: 2 }}
+                >
+                  Sign Out
+                </Button>
+              </>
+            )}
+
+            <Divider sx={{ my: 1 }} />
+
+            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+              🔗 Wallet
+            </Typography>
+            {!isConnected ? (
+              <Button
+                fullWidth
+                variant="contained"
+                onClick={() => {
+                  setShowWalletModal(true);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                Connect Wallet
+              </Button>
+            ) : (
+              <Button
+                fullWidth
+                variant="outlined"
+                color="error"
+                onClick={() => {
+                  setShowDisconnectWarning(true);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                Disconnect Wallet
+              </Button>
+            )}
+          </Box>
+        </Box>
+      </Drawer>
     </AppBar>
   );
 }

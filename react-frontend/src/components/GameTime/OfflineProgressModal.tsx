@@ -110,7 +110,7 @@ export const OfflineProgressModal: React.FC<OfflineProgressModalProps> = ({
 
             {/* Progress Summary */}
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-              {/* Rental Income */}
+              {/* Available Cash - Rental Income */}
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -122,14 +122,19 @@ export const OfflineProgressModal: React.FC<OfflineProgressModalProps> = ({
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <MonetizationOn sx={{ color: 'success.main' }} />
-                  <Typography variant="body1">Rental Income Earned</Typography>
+                  <Box>
+                    <Typography variant="body1">Rental Income Available</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      💰 Added to your wallet
+                    </Typography>
+                  </Box>
                 </Box>
                 <Typography variant="h6" sx={{ color: 'success.main', fontWeight: 600 }}>
                   +{formatCurrency(progress.rentalIncome)}
                 </Typography>
               </Box>
 
-              {/* Property Appreciation */}
+              {/* Property Appreciation - Paper Gains */}
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -141,7 +146,12 @@ export const OfflineProgressModal: React.FC<OfflineProgressModalProps> = ({
               }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <TrendingUp sx={{ color: 'primary.main' }} />
-                  <Typography variant="body1">Portfolio Appreciation</Typography>
+                  <Box>
+                    <Typography variant="body1">Property Appreciation</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      📈 Unrealized gains
+                    </Typography>
+                  </Box>
                 </Box>
                 <Typography variant="h6" sx={{ color: 'primary.main', fontWeight: 600 }}>
                   +{formatCurrency(progress.appreciation)}
@@ -172,14 +182,25 @@ export const OfflineProgressModal: React.FC<OfflineProgressModalProps> = ({
 
             <Divider />
 
-            {/* Total Progress */}
-            <Box sx={{ textAlign: 'center' }}>
+            {/* Total Progress - Separated */}
+            <Box sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 1 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Total Portfolio Growth
+                Available Cash (Added to Wallet)
               </Typography>
               <Typography variant="h4" sx={{ color: 'success.main', fontWeight: 700 }}>
-                +{formatCurrency(progress.rentalIncome + progress.appreciation)}
+                +{formatCurrency(progress.rentalIncome)}
               </Typography>
+              
+              {progress.appreciation > 0 && (
+                <>
+                  <Typography variant="body2" color="text.secondary" gutterBottom sx={{ mt: 2 }}>
+                    Portfolio Value Increase (Unrealized)
+                  </Typography>
+                  <Typography variant="h5" sx={{ color: 'primary.main', fontWeight: 600 }}>
+                    +{formatCurrency(progress.appreciation)}
+                  </Typography>
+                </>
+              )}
             </Box>
           </Box>
         )}

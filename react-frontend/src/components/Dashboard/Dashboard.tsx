@@ -163,7 +163,7 @@ export default function Dashboard() {
             <Typography variant="h6">
               🎮 Test Wallet Connected
             </Typography>
-            <Chip label="Simulation" color="secondary" size="small" />
+            {/* <Chip label="Simulation" color="secondary" size="small" /> */}
           </Box>
           
           <Grid container spacing={3}>
@@ -187,9 +187,9 @@ export default function Dashboard() {
                 </IconButton>
               </Box>
               
-              <Typography variant="caption" color="text.secondary" display="block">
+              {/* <Typography variant="caption" color="text.secondary" display="block">
                 Blockchain wallet connected - Sepolia Testnet
-              </Typography>
+              </Typography> */}
             </Grid>
             
             <Grid item xs={12} md={4}>
@@ -230,7 +230,7 @@ export default function Dashboard() {
               </Box>
               
               {/* Automatic Collection Status */}
-              <Box sx={{ mb: 2, p: 1, bgcolor: 'rgba(0,128,0,0.1)', borderRadius: 1 }}>
+              {/* <Box sx={{ mb: 2, p: 1, bgcolor: 'rgba(0,128,0,0.1)', borderRadius: 1 }}>
                 <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, display: 'block' }}>
                   🤖 AUTOMATIC COLLECTION
                 </Typography>
@@ -243,10 +243,10 @@ export default function Dashboard() {
                 <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
                   Next Collection: {getNextCollectionTime()?.toLocaleTimeString() || 'N/A'}
                 </Typography>
-              </Box>
+              </Box> */}
 
               {/* Debug: Rental Payment Data */}
-              <Box sx={{ mb: 2, p: 1, bgcolor: 'rgba(255,0,0,0.1)', borderRadius: 1 }}>
+              {/* <Box sx={{ mb: 2, p: 1, bgcolor: 'rgba(255,0,0,0.1)', borderRadius: 1 }}>
                 <Typography variant="caption" color="error.main" sx={{ fontWeight: 600, display: 'block' }}>
                   🔍 RENTAL DEBUG
                 </Typography>
@@ -265,7 +265,7 @@ export default function Dashboard() {
                 <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
                   Can Collect: {canCollect ? 'YES' : 'NO'}
                 </Typography>
-              </Box>
+              </Box> */}
               
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                 {canCollect ? (
@@ -440,7 +440,7 @@ export default function Dashboard() {
                       </Typography>
                       
                       {/* Debug: Show all timestamp information and rental data */}
-                      <Box sx={{ mt: 1, p: 1, bgcolor: 'rgba(0,255,0,0.1)', borderRadius: 1 }}>
+                      {/* <Box sx={{ mt: 1, p: 1, bgcolor: 'rgba(0,255,0,0.1)', borderRadius: 1 }}>
                         <Typography variant="caption" color="success.main" sx={{ fontWeight: 600, display: 'block' }}>
                           🔍 PROPERTY DEBUG
                         </Typography>
@@ -456,7 +456,7 @@ export default function Dashboard() {
                         <Typography variant="caption" sx={{ fontSize: '0.7rem', display: 'block', fontFamily: 'monospace' }}>
                           Monthly Rate: ${property.monthlyIncome.toFixed(2)}
                         </Typography>
-                      </Box>
+                      </Box> */}
                     </Box>
                   </Box>
 

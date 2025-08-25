@@ -565,7 +565,7 @@ export default function LandingPage() {
       </Container>
 
       {/* Development Debug Panel */}
-      {process.env.NODE_ENV === 'development' && <TimelineDebug />}
+      {/* {process.env.NODE_ENV === 'development' && <TimelineDebug />} */}
 
       {/* Mock Wallet Modal */}
       <MockWallet
